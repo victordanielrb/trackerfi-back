@@ -89,3 +89,72 @@ Agrupamento: várias moedas em uma chamada.
 Cache compartilhado: evita chamadas repetidas para o mesmo ativo.
 
 Prioridade: moedas mais populares atualizadas com mais frequência.
+
+
+
+
+
+______________________________________________
+## Segunda Parte
+# 🔄 Fluxo Completo de Atualização de Tokens e Preços
+
+## 📌 Visão Geral
+Este fluxo descreve como o sistema:
+1. Coleta tokens das carteiras via **Zerion**.
+2. Detecta mudanças (novos tokens ou remoções).
+3. Agrupa endereços por rede.
+4. Busca preços em lote via **CoinGecko**.
+5. Armazena no **MongoDB** (histórico/snapshot) e **Redis** (cache rápido).
+6. Entrega ao **Front-end**.
+
+---
+
+## 🗺 Fluxo Detalhado
+
+1. 👤 **Usuário**
+   - Possui uma ou mais carteiras (ETH, SOL, etc.).
+   - Endereços cadastrados no sistema.
+
+2. ⏱ **Job de Pooling (a cada X minutos)**
+   - Busca no Mongo a lista de carteiras cadastradas.
+   - Pode ser incremental (lotes) para reduzir carga.
+
+3. 🌐 **Zerion API**
+   - Recebe endereço da carteira.
+   - Retorna lista de tokens (endereço, símbolo, decimais, saldo).
+
+4. 🗄 **MongoDB (Snapshot de Tokens)**
+   - Compara lista retornada com snapshot salvo.
+   - Se **não houver mudanças** → ignora atualização.
+   - Se **houver mudanças** → atualiza snapshot.
+
+5. 🧮 **Agrupamento de Endereços**
+   - Junta todos os endereços únicos de tokens de todas as carteiras.
+   - Separa por rede (Ethereum, Solana, Polygon, etc.).
+
+6. 📊 **CoinGecko API**
+   - Endpoint: `/simple/token_price/{id_da_rede}`
+   - Busca preços em lote para todos os tokens de uma rede.
+   - Retorna preços em USD, BRL, etc.
+
+7. ⚡ **Redis (Cache de Preços)**
+   - Armazena preços com TTL curto (30–60s).
+   - Evita chamadas repetidas ao CoinGecko.
+   - Serve como fonte primária para o front-end.
+
+8. 🗄 **MongoDB (Histórico de Preços)**
+   - Opcional: salva preços para histórico e gráficos.
+   - Pode ser otimizado com TimescaleDB se necessário.
+
+9. 📱 **Front-end**
+   - Consome dados do back-end (Redis + Mongo).
+   - Exibe preços, gráficos e alertas.
+
+10. 🔔 **Sistema de Alertas**
+    - Monitora preços no cache.
+    - Dispara push notification (FCM/OneSignal) quando gatilhos são atingidos.
+
+---
+
+## 🔍 Diagrama Simplificado com Ícones
+
