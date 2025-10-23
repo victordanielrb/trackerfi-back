@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { UserType } from '../../interfaces/user';
 
 import type { Secret } from 'jsonwebtoken';
 
@@ -8,7 +7,6 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1h'; // fallback to '1h' i
 
 export interface JWTPayload {
   userId: string;
-  userType: UserType;
   username: string;
   email?: string; // For host users
   twitter_username?: string; // For creator users
@@ -19,14 +17,14 @@ export const generateToken = (payload: JWTPayload) => {
 
   return jwt.sign({
     data: payload
-  }, secret, { expiresIn: "7d", issuer: 'bounties-api', audience: 'bounties-users' });
+  }, secret, { expiresIn: "7d", issuer: 'trackerfi-api', audience: 'trackerfi-users' });
 };
 
 export const verifyToken = (token: string): JWTPayload | null => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
-      issuer: 'bounties-api',
-      audience: 'bounties-users',
+      issuer: 'trackerfi-api',
+      audience: 'trackerfi-users',
     }) as any;
     
     // Extract the data property from the JWT payload
@@ -52,6 +50,6 @@ export const refreshToken = (token: string): string | null => {
   if (!payload) return null;
   
   // Remove exp, iat, iss, aud from payload before regenerating
-  const { userId, userType, username, email, twitter_username } = payload;
-  return generateToken({ userId, userType, username, email, twitter_username });
+  const { userId, username, email, twitter_username } = payload;
+  return generateToken({ userId, username, email, twitter_username });
 };

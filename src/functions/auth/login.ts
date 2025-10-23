@@ -1,14 +1,12 @@
 import mongo from "../../mongo";
 import bcrypt from 'bcrypt';
 import { generateToken } from './jwtUtil';
-import { HostUser, UserType, UserStatus } from "../../interfaces/user";
-
 interface LoginResult {
+    success: boolean;
     message: string;
-    status: number;
     data?: {
         token: string;
-        user: Omit<HostUser, 'password_hash'>;
+        user: any;
     };
 }
 
@@ -17,20 +15,16 @@ export default async function login(email: string, password: string): Promise<Lo
     
     try {
         await client.connect();
-        const database = client.db("bounties");
-        const usersCollection = database.collection("users");
+        const database = client.db("trackerfi");
+        const loginCollection = database.collection("login_users");
 
         // Find user by email
-        const user = await usersCollection.findOne({ 
-            email, 
-            user_type: UserType.HOST,
-            status: UserStatus.ACTIVE 
-        }) as HostUser | null;
+        const user = await loginCollection.findOne({ email }) as any;
 
         if (!user) {
             return { 
-                message: "Invalid email or password", 
-                status: 401 
+                success: false,
+                message: "Invalid email or password"
             };
         }
 
@@ -39,36 +33,40 @@ export default async function login(email: string, password: string): Promise<Lo
         
         if (!isPasswordValid) {
             return { 
-                message: "Invalid email or password", 
-                status: 401 
+                success: false,
+                message: "Invalid email or password"
             };
         }
 
         // Generate JWT token
         const token = generateToken({
-            userId: user.id,
-            userType: user.user_type,
-            username: user.username,
-            email: user.email
+            userId: user._id.toString(),
+            email: user.email,
+            username: user.username
         });
 
         // Return user data without password hash
         const { password_hash, ...userWithoutPassword } = user;
 
         return {
+            success: true,
             message: "User logged in successfully",
-            status: 200,
             data: {
                 token,
-                user: userWithoutPassword
+                user: {
+                    id: user._id.toString(),
+                    email: user.email,
+                    username: user.username,
+                    created_at: user.created_at
+                }
             }
         };
 
     } catch (error) {
         console.error("Error logging in user:", error);
         return { 
-            message: "Error logging in user", 
-            status: 500 
+            success: false,
+            message: "Error logging in user"
         };
     } finally {
         await client.close();

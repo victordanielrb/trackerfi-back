@@ -14,7 +14,7 @@ app.get('/tokens', async (req, res) => {
     const client = mongo();
     try {
         await client.connect();
-        const db = client.db('trackfi');
+        const db = client.db('trackerfi');
         const collection = db.collection('tokens');
         const tokens = await collection.find({}).toArray();
         res.json(tokens);

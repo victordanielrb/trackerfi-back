@@ -1,57 +1,61 @@
 
-import { BaseUser, HostUser } from "../../interfaces";
+import { log } from "console";
 import mongo from "../../mongo";
 import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 12; // Higher number = more secure but slower
 
-export default async function register(user: HostUser & { password: string }): Promise<{ message: string; status: number; userId?: string }> {
+export default async function register(email: string, password: string, username: string): Promise<{ success: boolean; message: string; data?: any }> {
     const client = mongo();
-    
+    const passwd = password.trim();
     try {
         await client.connect();
-        const database = client.db("bounties");
-        const usersCollection = database.collection("users");
+        const database = client.db("trackerfi");
+        const loginCollection = database.collection("login_users");
 
         // Check if user already exists
-        const existingUser = await usersCollection.findOne({
+        const existingUser = await loginCollection.findOne({
             $or: [
-                { email: user.email },
-                { username: user.username }
+                { email: email },
+                { username: username }
             ]
         });
 
         if (existingUser) {
-            return { message: "User with this email or username already exists", status: 409 };
+            return { success: false, message: "User with this email or username already exists" };
         }
 
         // Hash the password before storing
-        const password_hash = await bcrypt.hash(user.password, SALT_ROUNDS);
+        const password_hash = await bcrypt.hash(passwd, SALT_ROUNDS);
         
-        // Create user object without plain password
-        const { password, ...userWithoutPassword } = user;
+       
         const userToStore = {
-            ...userWithoutPassword,
-            password_hash,
+            email: email,
+            username: username,
+            password_hash: password_hash,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };
 
-        const result = await usersCollection.insertOne(userToStore);
+        const result = await loginCollection.insertOne(userToStore);
 
         if (!result.insertedId) {
-            return { message: "Error registering user", status: 500 };
+            return { success: false, message: "Error registering user" };
         }
 
         return { 
+            success: true,
             message: "User registered successfully", 
-            status: 201,
-            userId: result.insertedId.toString()
+            data: {
+                userId: result.insertedId.toString(),
+                email: email,
+                username: username
+            }
         };
 
     } catch (error) {
         console.error("Error registering user:", error);
-        return { message: "Error registering user", status: 500 };
+        return { success: false, message: "Error registering user" };
     } finally {
         await client.close();
     }

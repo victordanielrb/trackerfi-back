@@ -6,7 +6,7 @@ const updateWallet = async (req: Request) => {
     const client = mongo();
     try {
         await client.connect();
-        const database = client.db("bounties");
+        const database = client.db("trackerfi");
                 const walletId = req.params.id;
 
         const objectId = toObjectId(req.params.id);

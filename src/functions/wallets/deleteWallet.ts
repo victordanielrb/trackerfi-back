@@ -1,23 +1,21 @@
-import { Request } from 'express';
 import mongo from '../../mongo';
 import { toObjectId } from '../../utils/mongodb';
 
-const deleteWallet = async (req: Request) => {
+const deleteWallet = async (walletId: string): Promise<{ status: number; message: any }> => {
     const client = mongo();
     try {
         await client.connect();
-        const database = client.db("bounties");
-                const walletId = req.params.id;
+        const database = client.db("trackerfi");
 
-        const objectId = toObjectId(req.params.id);
+        const objectId = toObjectId(walletId);
         if (!objectId) {
-            return { message: "Invalid wallet ID", status: 400 };
+            return { status: 400, message: "Invalid wallet ID" };
         }
 
         // Check if wallet exists
         const existingWallet = await database.collection("user_wallets").findOne({ _id: objectId });
         if (!existingWallet) {
-            return { message: "Wallet not found", status: 404 };
+            return { status: 404, message: "Wallet not found" };
         }
 
         // Check if wallet is being used in any active campaigns or submissions
@@ -28,21 +26,21 @@ const deleteWallet = async (req: Request) => {
 
         if (activeUsage) {
             return { 
-                message: "Cannot delete wallet that is being used in active campaigns", 
-                status: 400 
+                status: 409,
+                message: "Cannot delete wallet that is being used in active campaigns"
             };
         }
 
         const result = await database.collection("user_wallets").deleteOne({ _id: objectId });
 
         if (result.deletedCount === 0) {
-            return { message: "Failed to delete wallet", status: 500 };
+            return { status: 400, message: "Failed to delete wallet" };
         }
 
-        return { message: "Wallet deleted successfully", status: 200 };
+        return { status: 200, message: { message: "Wallet deleted successfully", deletedId: walletId } };
     } catch (error) {
         console.error("Error deleting wallet:", error);
-        return { message: "Error deleting wallet", status: 500 };
+        return { status: 500, message: "Error deleting wallet" };
     } finally {
         await client.close();
     }
