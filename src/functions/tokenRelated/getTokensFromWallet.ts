@@ -6,7 +6,7 @@ const options = {
   method: 'GET',
   headers: {
     accept: 'application/json',
-    authorization: 'Basic emtfZGV2XzMxMmQ1ZTdlODNhYzQ4YzNhZmYxMDQ5ODFkNjQ5MWMwOlNvcnRlaW8xMg=='
+    authorization: 'Basic '+process.env.ZERION_API_KEY_HASH
   }
 };
 

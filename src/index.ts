@@ -21,6 +21,8 @@ import { test24hChangeEndpoint } from './functions/test/test24hEndpoint';
 import authRouter from './routes/auth';
 import walletRouter from './routes/wallets';
 import trackingRouter from './routes/tracking';
+import globalDataRouter from './routes/globaldata';
+
 const app = express();
 
 // Middleware
@@ -35,6 +37,8 @@ app.use(cors({
 app.use("/auth", authRouter);
 app.use("/api/wallets", walletRouter);
 app.use("/api/tracking", trackingRouter);
+app.use("/api/globaldata", globalDataRouter);
+
 // Token-related routes
 app.post('/filterTokens', (req, res) => {
 	try {
