@@ -4,9 +4,9 @@ export enum Blockchain {
   SOLANA = 'SOLANA',
 }
 export interface UserWallet {
-  user_id: string;
-  blockchain: Blockchain;
-  wallet_address: string;
-  connected_at: string;
-  updated_at: string;
+  // Wallet object as stored inside the `users` collection (users.wallets)
+  address: string;
+  chain: Blockchain;
+  connected_at?: string;
+  updated_at?: string;
 }

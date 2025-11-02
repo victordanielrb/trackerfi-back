@@ -6,26 +6,51 @@ const getWalletById = async (req: Request) => {
     const client = mongo();
     try {
         await client.connect();
-        const database = client.db("trackerfi");
-                const walletId = req.params.id;
+    const database = client.db("trackerfi");
 
-        const objectId = toObjectId(req.params.id);
-        if (!objectId) {
-            return { message: "Invalid wallet ID", status: 400 };
+        // Expect walletId in the format: <userId>-<chain>-<idx>
+        const walletId = req.params.id;
+        const parts = walletId.split('-');
+        if (parts.length < 2) {
+            return { message: "Invalid wallet ID format", status: 400 };
         }
 
-        const wallet = await database.collection("user_wallets").findOne({ _id: objectId });
-        
-        if (!wallet) {
+        const userId = parts[0];
+        const chain = parts[1];
+        const idx = parts.length > 2 ? parseInt(parts[2], 10) : undefined;
+
+        const objectId = toObjectId(userId);
+        if (!objectId) {
+            return { message: "Invalid user ID in wallet ID", status: 400 };
+        }
+
+        const user = await database.collection("users").findOne({ _id: objectId });
+        if (!user) {
+            return { message: "User not found", status: 404 };
+        }
+
+        const wallets = (user as any).wallets || [];
+        let walletEntry: any = null;
+        if (typeof idx === 'number' && !isNaN(idx)) {
+            walletEntry = wallets[idx];
+        } else {
+            walletEntry = wallets.find((w: any) => String(w.chain) === chain);
+        }
+
+        if (!walletEntry) {
             return { message: "Wallet not found", status: 404 };
         }
 
-        return { 
+        return {
             message: {
-                ...wallet,
-                id: wallet._id.toString()
-            }, 
-            status: 200 
+                id: walletId,
+                user_id: userId,
+                blockchain: walletEntry.chain,
+                wallet_address: walletEntry.address,
+                connected_at: walletEntry.connected_at,
+                updated_at: walletEntry.updated_at
+            },
+            status: 200
         };
     } catch (error) {
         console.error("Error retrieving wallet:", error);

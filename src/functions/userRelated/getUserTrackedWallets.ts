@@ -15,7 +15,7 @@ export default async function getUserTrackedWallets(
   try {
     const db = client.db("trackerfi");
     
-    const user = await db.collection("login_users").findOne(
+    const user = await db.collection("users").findOne(
       { _id: new ObjectId(userId) },
       { projection: { wallets: 1 } }
     );

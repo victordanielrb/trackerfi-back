@@ -44,14 +44,14 @@ const verifyWalletOwnership = async (address: string, blockchain: Blockchain, us
     return true;
 };
 
-// PLACEHOLDER: Check if wallet is already in use
-const isWalletInUse = async (address: string, blockchain: Blockchain, database: any): Promise<string | null> => {
-    const existingWallet = await database.collection("user_wallets").findOne({
-        wallet_address: address,
-        blockchain: blockchain
+// Check if a wallet address is already tracked by any user
+const isWalletInUse = async (address: string, database: any): Promise<string | null> => {
+    // Search users collection for any user that has this address in their wallets array
+    const existing = await database.collection("users").findOne({
+        "wallets.address": address
     });
-    
-    return existingWallet ? existingWallet.user_id : null;
+
+    return existing ? (existing._id ? existing._id.toString() : null) : null;
 };
 
 const addWallet = async (user_id: string, blockchain: string, wallet_address: string): Promise<{ status: number; message: any }> => {
@@ -70,9 +70,26 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
         const database = client.db("trackerfi");
         
         // Verificar se o usuário existe na coleção login_users
-        const user = await database.collection("login_users").findOne({ _id: new ObjectId(user_id) });
+        const authUser = await database.collection("login_users").findOne({ _id: new ObjectId(user_id) });
+        if (!authUser) {
+            return { status: 404, message: { error: "User not found in auth" } };
+        }
+
+        // Verificar se o usuário existe na coleção users (onde guardamos os wallets)
+        let user = await database.collection("users").findOne({ _id: new ObjectId(user_id) });
         if (!user) {
-            return { status: 404, message: { error: "User not found" } };
+            // Create users document if it doesn't exist (migration case)
+            console.log(`Creating users document for existing user ${user_id}`);
+            const newUserData = {
+                _id: new ObjectId(user_id),
+                name: authUser.username,
+                email: authUser.email,
+                wallets: [],
+                exchanges: []
+            };
+            
+            await database.collection("users").insertOne(newUserData);
+            user = newUserData;
         }
 
         // PLACEHOLDER: Validar formato do endereço da wallet
@@ -81,59 +98,70 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
             return { status: 400, message: { error: addressValidation.reason || "Invalid wallet address" } };
         }
 
-        // Verificar se já tem wallet para esta blockchain
-        const existingWallet = await database.collection("user_wallets").findOne({
-            user_id,
-            blockchain
-        });
-        
-        if (existingWallet) {
-            // Atualizar endereço se for diferente
-            if (existingWallet) {
-            
-                const updateResult = await database.collection("user_wallets").updateOne(
-                    { user_id, blockchain },
-                    { 
-                        $set: { 
-                            wallet_address,
-                            connected_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        }
-                    }
-                );
-                console.log(`🔄 Updated wallet for user ${user_id} on ${blockchain}`);
-                return { status: 200, message: { message: "Wallet address updated successfully", updated: true } };
-            } else {
-                return { status: 409, message: { error: "User already has this wallet registered for this blockchain" } };
-            }
+        // Check whether this wallet address is already tracked by another user
+        const owner = await isWalletInUse(wallet_address, database);
+        if (owner && owner !== user_id) {
+            return { status: 409, message: { error: "This wallet address is already tracked by another user" } };
         }
 
-        // PLACEHOLDER: Verificar propriedade da wallet
+        // Verify wallet ownership (placeholder)
         const ownershipVerified = await verifyWalletOwnership(wallet_address, blockchain as Blockchain, user_id);
         if (!ownershipVerified) {
             return { status: 403, message: { error: "Wallet ownership verification failed" } };
         }
-        
-        const newWallet: Partial<UserWallet> = {
-            user_id,
-            blockchain: blockchain as Blockchain,
-            wallet_address,
-            connected_at: new Date().toISOString()
+
+        const now = new Date().toISOString();
+
+        // If the user already has a wallet entry for this chain, update it. Otherwise push a new wallet object
+        const userHasChain = await database.collection("users").findOne({
+            _id: new ObjectId(user_id),
+            "wallets.chain": blockchain
+        });
+
+        if (userHasChain) {
+            // Update the existing wallet entry for the chain
+            const updateResult = await database.collection("users").updateOne(
+                { _id: new ObjectId(user_id), "wallets.chain": blockchain },
+                { 
+                    $set: { 
+                        "wallets.$.address": wallet_address,
+                        "wallets.$.connected_at": now,
+                        "wallets.$.updated_at": now
+                    }
+                }
+            );
+
+            console.log(`🔄 Updated wallet for user ${user_id} on ${blockchain}`);
+            return { status: 200, message: { message: "Wallet address updated successfully", updated: true } };
+        }
+
+        // Push new wallet entry into the user's wallets array
+        const walletObj: any = {
+            address: wallet_address,
+            chain: blockchain as Blockchain,
+            connected_at: now,
+            updated_at: now
         };
-        
-        const result = await database.collection("user_wallets").insertOne(newWallet);
+
+        const pushResult = await database.collection("users").updateOne(
+            { _id: new ObjectId(user_id) },
+            { $push: { wallets: walletObj } } as any
+        );
+
+        if (pushResult.matchedCount === 0) {
+            return { status: 404, message: { error: "User not found" } };
+        }
 
         console.log(`✅ Wallet added successfully for user ${user_id} on ${blockchain}`);
-        
-        return { 
+
+        return {
             status: 201,
             message: {
                 message: "Wallet added successfully",
-                id: result.insertedId.toString(), 
                 user_id,
                 blockchain,
                 wallet_address,
-                connected_at: newWallet.connected_at,
+                connected_at: now,
                 wallet_info: {
                     blockchain: blockchain,
                     address_format: "validated",

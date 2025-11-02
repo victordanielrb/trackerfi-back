@@ -4,19 +4,31 @@ const getAllWallets = async (): Promise<{ status: number; message: any }> => {
     try {
         const result = await withMongoDB(async (client) => {
             const database = client.db("trackerfi");
-            
-            const wallets = await database.collection("wallets")
-                .find({})
-                .sort({ connected_at: -1 })
+
+            // Aggregate wallets stored inside users.wallets array
+            const usersWithWallets = await database.collection("users")
+                .find({ "wallets.0": { $exists: true } })
+                .project({ wallets: 1 })
                 .toArray();
 
-            return wallets.map((wallet: any) => ({
-                id: wallet._id.toString(),
-                user_id: wallet.user_id,
-                blockchain: wallet.blockchain,
-                wallet_address: wallet.wallet_address,
-                connected_at: wallet.connected_at
-            }));
+            const flattened: any[] = [];
+            usersWithWallets.forEach((u: any) => {
+                const userId = u._id?.toString();
+                const wallets = u.wallets || [];
+                wallets.forEach((w: any, idx: number) => {
+                    flattened.push({
+                        id: `${userId}-${w.chain}-${idx}`,
+                        user_id: userId,
+                        blockchain: w.chain,
+                        wallet_address: w.address,
+                        connected_at: w.connected_at
+                    });
+                });
+            });
+
+            // Optionally sort by connected_at descending
+            flattened.sort((a, b) => (b.connected_at || '').localeCompare(a.connected_at || ''));
+            return flattened;
         });
 
         return { 

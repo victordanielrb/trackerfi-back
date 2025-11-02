@@ -17,7 +17,7 @@ export default async function removeTrackedWallet(
   try {
     const db = client.db("trackerfi");
     
-    const result = await db.collection("login_users").updateOne(
+    const result = await db.collection("users").updateOne(
       { _id: new ObjectId(userId) },
       { 
         $pull: { 

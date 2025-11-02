@@ -17,8 +17,8 @@ export default async function addTrackedWallet(
   try {
     const db = client.db("trackerfi");
     
-    // Check if wallet is already tracked by this user
-    const existingUser = await db.collection("login_users").findOne({
+    // Check if wallet is already tracked by this user in the users collection
+    const existingUser = await db.collection("users").findOne({
       _id: new ObjectId(userId),
       "wallets.address": walletAddress,
       "wallets.chain": chain
@@ -28,8 +28,8 @@ export default async function addTrackedWallet(
       throw new Error("Wallet already tracked by this user");
     }
 
-    // Add wallet to user's tracked wallets
-    const result = await db.collection("login_users").updateOne(
+    // Add wallet to user's tracked wallets in the users collection
+    const result = await db.collection("users").updateOne(
       { _id: new ObjectId(userId) },
       { 
         $addToSet: { 

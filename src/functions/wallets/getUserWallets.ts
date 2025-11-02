@@ -14,22 +14,19 @@ const getUserWallets = async (req: Request) => {
             return { status: 400, message: "Invalid user ID" };
         }
 
-        // Check if user exists in the login_users collection
-        const user = await database.collection("login_users").findOne({ _id: objectId });
+        // Check if user exists in the users collection and read embedded wallets
+        const user = await database.collection("users").findOne({ _id: objectId });
         if (!user) {
             return { status: 404, message: "User not found" };
         }
 
-        const wallets = await database.collection("user_wallets")
-            .find({ user_id: userId })
-            .sort({ connected_at: -1 })
-            .toArray();
+        const wallets = (user as any).wallets || [];
 
-        const walletsWithId = wallets.map(wallet => ({
-            id: wallet._id.toString(),
-            user_id: wallet.user_id,
-            blockchain: wallet.blockchain,
-            wallet_address: wallet.wallet_address,
+        const walletsWithId = (wallets as any[]).map((wallet, idx) => ({
+            id: `${userId}-${wallet.chain}-${idx}`,
+            user_id: userId,
+            blockchain: wallet.chain,
+            wallet_address: wallet.address,
             connected_at: wallet.connected_at
         }));
 

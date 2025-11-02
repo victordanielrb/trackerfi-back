@@ -30,6 +30,7 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
     });
   }
 
+  console.log('Decoded JWT token:', decoded); // Add debugging
   (req as any).user = decoded;
   next();
 };
@@ -124,14 +125,26 @@ router.get('/:walletId', authenticateToken, async (req: Request, res: Response) 
 // POST /api/wallets - Add new wallet
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { user_id, blockchain, wallet_address } = req.body;
+    // Get user ID from the JWT token (it's stored in the 'userId' field)
+    const user_id = (req as any).user?.userId;
+    const { blockchain, wallet_address } = req.body;
     
-    if (!user_id || !blockchain || !wallet_address) {
-      return res.status(400).json({
+    if (!user_id) {
+      console.error('User ID not found in token:', (req as any).user);
+      return res.status(401).json({
         success: false,
-        message: 'User ID, blockchain, and wallet address are required'
+        message: 'User not authenticated - no user ID in token'
       });
     }
+    
+    if (!blockchain || !wallet_address) {
+      return res.status(400).json({
+        success: false,
+        message: 'Blockchain and wallet address are required'
+      });
+    }
+
+    console.log('Adding wallet for user:', user_id, 'blockchain:', blockchain, 'address:', wallet_address);
 
     const result = await addWallet(user_id, blockchain, wallet_address);
     

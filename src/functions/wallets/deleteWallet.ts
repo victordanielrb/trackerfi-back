@@ -7,21 +7,43 @@ const deleteWallet = async (walletId: string): Promise<{ status: number; message
         await client.connect();
         const database = client.db("trackerfi");
 
-        const objectId = toObjectId(walletId);
-        if (!objectId) {
-            return { status: 400, message: "Invalid wallet ID" };
+        // Expect walletId in the format: <userId>-<chain>-<idx> (as returned by API)
+        const parts = walletId.split('-');
+        if (parts.length < 2) {
+            return { status: 400, message: "Invalid wallet ID format" };
         }
 
-        // Check if wallet exists
-        const existingWallet = await database.collection("user_wallets").findOne({ _id: objectId });
-        if (!existingWallet) {
+        const userId = parts[0];
+        const chain = parts[1];
+        const idx = parts.length > 2 ? parseInt(parts[2], 10) : undefined;
+
+        const objectId = toObjectId(userId);
+        if (!objectId) {
+            return { status: 400, message: "Invalid user ID in wallet ID" };
+        }
+
+        // Load user and find the wallet entry
+        const user = await database.collection("users").findOne({ _id: objectId });
+        if (!user) {
+            return { status: 404, message: "User not found" };
+        }
+
+        const wallets = (user as any).wallets || [];
+        let walletEntry: any = null;
+        if (typeof idx === 'number' && !isNaN(idx)) {
+            walletEntry = wallets[idx];
+        } else {
+            walletEntry = wallets.find((w: any) => String(w.chain) === chain);
+        }
+
+        if (!walletEntry) {
             return { status: 404, message: "Wallet not found" };
         }
 
         // Check if wallet is being used in any active campaigns or submissions
         const activeUsage = await database.collection("campaign_participants").findOne({
-            user_id: existingWallet.user_id,
-            wallet_address: existingWallet.wallet_address
+            user_id: userId,
+            wallet_address: walletEntry.address
         });
 
         if (activeUsage) {
@@ -31,9 +53,13 @@ const deleteWallet = async (walletId: string): Promise<{ status: number; message
             };
         }
 
-        const result = await database.collection("user_wallets").deleteOne({ _id: objectId });
+        // Pull the wallet entry from the user's wallets array
+        const result = await database.collection("users").updateOne(
+            { _id: objectId },
+            { $pull: { wallets: { address: walletEntry.address, chain: walletEntry.chain } } } as any
+        );
 
-        if (result.deletedCount === 0) {
+        if (result.modifiedCount === 0) {
             return { status: 400, message: "Failed to delete wallet" };
         }
 

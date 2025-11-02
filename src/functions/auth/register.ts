@@ -2,6 +2,8 @@
 import { log } from "console";
 import mongo from "../../mongo";
 import bcrypt from 'bcrypt';
+import User from "../../interfaces/userInterface";
+import { ObjectId } from "mongodb";
 
 const SALT_ROUNDS = 12; // Higher number = more secure but slower
 
@@ -12,8 +14,9 @@ export default async function register(email: string, password: string, username
         await client.connect();
         const database = client.db("trackerfi");
         const loginCollection = database.collection("login_users");
+        const usersCollection = database.collection("users");
 
-        // Check if user already exists
+        // Check if user already exists in login_users (auth collection)
         const existingUser = await loginCollection.findOne({
             $or: [
                 { email: email },
@@ -28,8 +31,8 @@ export default async function register(email: string, password: string, username
         // Hash the password before storing
         const password_hash = await bcrypt.hash(passwd, SALT_ROUNDS);
         
-       
-        const userToStore = {
+        // Create auth record in login_users (only for authentication)
+        const authUserToStore = {
             email: email,
             username: username,
             password_hash: password_hash,
@@ -37,17 +40,38 @@ export default async function register(email: string, password: string, username
             updated_at: new Date().toISOString(),
         };
 
-        const result = await loginCollection.insertOne(userToStore);
+        const authResult = await loginCollection.insertOne(authUserToStore);
 
-        if (!result.insertedId) {
+        if (!authResult.insertedId) {
             return { success: false, message: "Error registering user" };
         }
+
+        // Create user data record in users collection (using User interface)
+        const userData = {
+            _id: authResult.insertedId, // Use ObjectId directly
+            name: username, // Use username as name for now
+            email: email,
+            wallets: [], // Initialize empty wallets array
+            exchanges: [] // Initialize empty exchanges array
+        };
+
+        const userResult = await usersCollection.insertOne(userData);
+
+        if (!userResult.insertedId) {
+            // If user data creation fails, cleanup the auth record
+            await loginCollection.deleteOne({ _id: authResult.insertedId });
+            return { success: false, message: "Error creating user data" };
+        }
+
+        console.log(`✅ User registered successfully: ${username} (${email})`);
+        console.log(`📧 Auth ID: ${authResult.insertedId.toString()}`);
+        console.log(`👤 User ID: ${userResult.insertedId.toString()}`);
 
         return { 
             success: true,
             message: "User registered successfully", 
             data: {
-                userId: result.insertedId.toString(),
+                userId: authResult.insertedId.toString(),
                 email: email,
                 username: username
             }
