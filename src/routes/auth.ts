@@ -1,33 +1,9 @@
 import { Router, Request, Response } from 'express';
 import login from '../functions/auth/login';
 import register from '../functions/auth/register';
-import { verifyToken } from '../functions/auth/jwtUtil';
+import { authenticateToken } from '../functions/auth/jwtMiddleware';
 
 const router = Router();
-
-// Middleware to verify JWT token
-const authenticateToken = (req: Request, res: Response, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Access token required'
-    });
-  }
-
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
-  }
-
-  (req as any).user = decoded;
-  next();
-};
 
 // POST /auth/register
 router.post('/register', async (req: Request, res: Response) => {

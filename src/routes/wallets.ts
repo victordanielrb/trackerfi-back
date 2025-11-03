@@ -6,34 +6,11 @@ import getUserWallets from '../functions/wallets/getUserWallets';
 import getWalletById from '../functions/wallets/getWalletById';
 import updateWallet from '../functions/wallets/updateWallet';
 import getTokensFromWallet from '../functions/tokenRelated/getTokensFromWallet';
-import { verifyToken } from '../functions/auth/jwtUtil';
+import { authenticateToken } from '../functions/auth/jwtMiddleware';
 
 const router = Router();
 
-// Middleware to verify JWT token
-const authenticateToken = (req: Request, res: Response, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Access token required'
-    });
-  }
-
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
-  }
-
-  console.log('Decoded JWT token:', decoded); // Add debugging
-  (req as any).user = decoded;
-  next();
-};
+// Use shared JWT middleware
 
 // GET /api/wallets - Get all wallets (admin only)
 router.get('/', authenticateToken, async (req: Request, res: Response) => {

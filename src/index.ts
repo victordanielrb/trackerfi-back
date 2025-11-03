@@ -22,6 +22,7 @@ import authRouter from './routes/auth';
 import walletRouter from './routes/wallets';
 import trackingRouter from './routes/tracking';
 import globalDataRouter from './routes/globaldata';
+import exchangeRouter from './routes/exchange';
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/auth", authRouter);
 app.use("/api/wallets", walletRouter);
 app.use("/api/tracking", trackingRouter);
 app.use("/api/globaldata", globalDataRouter);
+app.use("/api/exchanges", exchangeRouter);
 
 // Token-related routes
 app.post('/filterTokens', (req, res) => {

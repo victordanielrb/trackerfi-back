@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyToken } from '../functions/auth/jwtUtil';
+import { authenticateToken } from '../functions/auth/jwtMiddleware';
 import addTrackedWallet from '../functions/userRelated/addTrackedWallet';
 import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
@@ -7,29 +7,7 @@ import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromT
 
 const router = express.Router();
 
-// Middleware to verify JWT token
-const authenticateToken = (req: express.Request, res: express.Response, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Access token required'
-    });
-  }
-
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
-  }
-
-  (req as any).user = decoded;
-  next();
-};
+// Use shared JWT middleware
 
 // Get user's tracked wallets
 router.get('/wallets', authenticateToken, async (req, res) => {
