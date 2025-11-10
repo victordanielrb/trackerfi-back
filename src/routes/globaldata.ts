@@ -5,6 +5,7 @@ import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
 import GlobalData from '../functions/tokenRelated/globalData';
+import { withMongoDB } from '../mongo';
 
 const router = express.Router();
 
@@ -22,10 +23,46 @@ const SAFE_TOTALDATA_FALLBACK = {
 
 router.get("/totaldata", async (req, res) => {
     try {
-        const gd = await GlobalData();
-        console.log("AIAIA global data ",gd);
+        // Use a singleton document in collection 'globaldata' with _id = 'global'
+        const TEN_MIN_MS = 10 * 60 * 1000;
+
+        const doc = await withMongoDB(async (client) => {
+            const db = client.db("trackerfi");
+            
+            return db.collection('globaldata').findOne({ key: 'global' });
+        });
         
+        const now = Date.now();
+        if (doc && doc.updated_at) {
+            const updatedAt = new Date(doc.updated_at).getTime();
+            if ((now - updatedAt) < TEN_MIN_MS) {
+                // return cached data (gd.data preferred, but fall back to stored data)
+                return res.json(doc.data?.data ?? doc.data ?? SAFE_TOTALDATA_FALLBACK);
+            }
+        }
+
+        // stale or missing -> fetch fresh data and upsert into DB
+        const gd = await GlobalData();
         const totaldata = gd?.data ?? SAFE_TOTALDATA_FALLBACK;
+
+        // upsert into collection - store the full GlobalData() result under 'data'
+        try {
+            console.log("insertng data");
+            
+            let datainsertresult = await withMongoDB(async (client) => {
+                const db = client.db("trackerfi");
+                await db.collection('globaldata').updateOne(
+                    { key: 'global' },
+                    { $set: { key: 'global', data: gd ?? {}, updated_at: new Date().toISOString() } },
+                    { upsert: true }
+                );
+            });
+
+            console.log("inserted data", datainsertresult);
+        } catch (dbErr) {
+            console.error('Failed to upsert globaldata cache:', dbErr);
+        }
+
         return res.json(totaldata);
     } catch (err) {
         console.error('globaldata /totaldata handler error:', err);
@@ -35,8 +72,42 @@ router.get("/totaldata", async (req, res) => {
 
 router.get('/prices', async (req, res) => {
     try {
+        const TEN_MIN_MS = 10 * 60 * 1000;
+
+        const doc = await withMongoDB(async (client) => {
+            const db = client.db("trackerfi");
+            return db.collection('globaldata').findOne({ key: 'global' });
+        });
+
+        const now = Date.now();
+        if (doc && doc.updated_at) {
+            const updatedAt = new Date(doc.updated_at).getTime();
+            if ((now - updatedAt) < TEN_MIN_MS) {
+                const cachedPrices = doc.data?.prices ?? { brl: null, eur: null };
+                return res.json(cachedPrices);
+            }
+        }
+
+        // stale or missing -> fetch fresh data and upsert
         const gd = await GlobalData();
         const prices = gd?.prices ?? { brl: null, eur: null };
+
+        try {
+            await withMongoDB(async (client) => {
+                const db = client.db("trackerfi");
+                // fetch existing doc to preserve other fields
+                const existing = await db.collection('globaldata').findOne({ key: 'global' });
+                const newData = { ...(existing?.data || {}), ...(gd || {}) };
+                await db.collection('globaldata').updateOne(
+                    { key: 'global' },
+                    { $set: { key: 'global', data: newData, updated_at: new Date().toISOString() } },
+                    { upsert: true }
+                );
+            });
+        } catch (dbErr) {
+            console.error('Failed to upsert globaldata cache (prices):', dbErr);
+        }
+
         return res.json(prices);
     } catch (err) {
         console.error('globaldata /prices handler error:', err);
