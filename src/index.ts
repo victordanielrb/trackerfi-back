@@ -11,7 +11,7 @@ import setTokenData from './functions/tokenRelated/setTokenData';
 import getTokenPrice from './functions/tokenRelated/setPriceTokens';
 import alerts from './functions/alerts/checkAlerts';
 import wsServer from './functions/alerts/wsServer';
-import http from 'http';
+import http from 'node:http';
 
 import { createUser } from './functions/userRelated/createUser';
 import { deleteUser } from './functions/userRelated/deleteUser';
