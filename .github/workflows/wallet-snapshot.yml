@@ -25,11 +25,13 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Install dependencies (including dev)
+      run: npm ci --include=dev
 
     - name: Build TypeScript
       run: npm run build
+      env:
+        NODE_ENV: development
 
     - name: Wallet snapshot
       run: node dist/scripts/walletSnapshot.js

@@ -1,5 +1,4 @@
 
-import { log } from "console";
 import mongo from "../../mongo";
 import bcrypt from 'bcrypt';
 import User from "../../interfaces/userInterface";

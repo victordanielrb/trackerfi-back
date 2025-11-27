@@ -1,10 +1,8 @@
-import { env } from "process";
-
-import { get } from "http";
+// Node built-in modules like http / console / process are available globally via Node types
 import getTokensFromWallet from "../wallets/getTokensFromWallet";
 import axios from "axios";
 import TokensFromWallet from "../../interfaces/tokenInterface";
-import { time, timeEnd } from "console";
+// Use global console.time and console.timeEnd instead of importing from console
 import { stringify } from "querystring";
 import mongo from "../../mongo";
 import filterTokens from "./filterTokens";
