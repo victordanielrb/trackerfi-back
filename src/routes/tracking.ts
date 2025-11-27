@@ -5,6 +5,7 @@ import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
 import addAlert from '../functions/alerts/addAlert';
+import getWalletTransactions from '../functions/wallets/getWalletTransactions';
 
 const router = express.Router();
 
@@ -75,6 +76,53 @@ router.get('/tokens', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error getting tokens from tracked wallets:', error);
     res.status(500).json({ error: 'Failed to get tokens from tracked wallets' });
+  }
+});
+
+// Get transactions from a specific wallet
+router.get('/wallets/:address/transactions', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { address } = req.params;
+    const { chain, cursor } = req.query;
+
+    if (!address) {
+      return res.status(400).json({ error: 'Wallet address is required' });
+    }
+
+    // Verify that the user has this wallet in their tracked wallets
+    const userWallets = await getUserTrackedWallets(userId);
+    const isWalletTracked = userWallets.wallets.some((wallet: any) => 
+      wallet.address.toLowerCase() === address.toLowerCase() &&
+      (!chain || wallet.chain === chain)
+    );
+
+    if (!isWalletTracked) {
+      return res.status(403).json({ error: 'Wallet not found in your tracking list' });
+    }
+
+    const result = await getWalletTransactions(
+      address, 
+      chain as string, 
+      cursor as string
+    );
+    
+    res.json({
+      wallet_address: address,
+      chain: chain || 'all',
+      transactions: result.transactions,
+      next_cursor: result.nextCursor,
+      total_count: result.transactions.length
+    });
+  } catch (error: any) {
+    console.error('Error getting wallet transactions:', error);
+    if (error.message.includes('not found')) {
+      res.status(404).json({ error: 'Wallet not found or no transactions available' });
+    } else if (error.message.includes('API key')) {
+      res.status(503).json({ error: 'Transaction service temporarily unavailable' });
+    } else {
+      res.status(500).json({ error: 'Failed to get wallet transactions' });
+    }
   }
 });
 

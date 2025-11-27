@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "trackerfi-back",
+			"path": "."
+		},
+		{
+			"name": "interfaces",
+			"path": "../../bounties/bounties-back/interfaces"
+		},
+		{
+			"name": "src",
+			"path": "../../bounties/bounties-back/src"
+		},
+		{
+			"name": "node_modules",
+			"path": "../../bounties/bounties-back/node_modules"
+		}
+	],
+	"settings": {}
+}
