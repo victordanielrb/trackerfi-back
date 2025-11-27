@@ -50,7 +50,7 @@ async function snapshotUser(user: any, db: any) {
       tokens: consolidatedTokens
     };
 
-    await db.collection('wallet_snapshots').insertOne(snapshotDoc);
+    await db.collection('snapshots').insertOne(snapshotDoc);
     console.log(`Snapshot saved for user ${userId} (${consolidatedTokens.length} tokens, total_value=${totalValueUSD})`);
   } catch (error) {
     console.error('Failed to snapshot user', user._id, error);
