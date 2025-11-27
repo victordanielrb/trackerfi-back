@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from "mongodb";
 import mongo from "../../mongo";
-import getTokensFromWallet from "../tokenRelated/getTokensFromWallet";
+import getTokensFromWallet from "../wallets/getTokensFromWallet";
 
 export default async function getTokensFromTrackedWallets(
   userId: string, 

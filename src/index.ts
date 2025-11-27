@@ -6,9 +6,12 @@ import cors from 'cors';
 
 // Import functions
 import filterTokens from './functions/tokenRelated/filterTokens';
-import getTokensFromWallet from './functions/tokenRelated/getTokensFromWallet';
+import getTokensFromWallet from './functions/wallets/getTokensFromWallet';
 import setTokenData from './functions/tokenRelated/setTokenData';
 import getTokenPrice from './functions/tokenRelated/setPriceTokens';
+import alerts from './functions/alerts/checkAlerts';
+import wsServer from './functions/alerts/wsServer';
+import http from 'http';
 
 import { createUser } from './functions/userRelated/createUser';
 import { deleteUser } from './functions/userRelated/deleteUser';
@@ -17,14 +20,18 @@ import { updateUser } from './functions/userRelated/updateUser';
 import addWallet from './functions/wallets/addWallet';
 import deleteWallet from './functions/wallets/deleteWallet';
 import getAllWallets from './functions/wallets/getAllWallets';
-import { test24hChangeEndpoint } from './functions/test/test24hEndpoint';
 import authRouter from './routes/auth';
 import walletRouter from './routes/wallets';
 import trackingRouter from './routes/tracking';
 import globalDataRouter from './routes/globaldata';
 import exchangeRouter from './routes/exchange';
+import tokensRouter from './routes/tokens';
+import usersRouter from './routes/users';
+import { initializeTokenPool } from './functions/tokenRelated/tokenPooling';
+
 
 const app = express();
+const server = http.createServer(app);
 
 // Middleware
 app.use(express.json());
@@ -40,6 +47,8 @@ app.use("/api/wallets", walletRouter);
 app.use("/api/tracking", trackingRouter);
 app.use("/api/globaldata", globalDataRouter);
 app.use("/api/exchanges", exchangeRouter);
+app.use("/api/tokens", tokensRouter);
+app.use("/api/users", usersRouter);
 
 // Token-related routes
 app.post('/filterTokens', (req, res) => {
@@ -86,6 +95,7 @@ app.post('/setTokenData', (req, res) => {
 		res.status(500).json({ error: errorMsg });
 	}
 });
+
 
 // User-related routes
 app.post('/createUser', async (req, res) => {
@@ -139,8 +149,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'TrackerFi Backend is running' });
 });
 
-// Test routes
-app.get('/api/test/24h-change', test24hChangeEndpoint);
 
 app.get('/wallets', async (req, res) => {
 	try {
@@ -166,9 +174,15 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 TrackerFi Backend running on port ${PORT}`);
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`🔐 Auth: http://localhost:${PORT}/auth/login`);
   console.log(`💼 Wallets: http://localhost:${PORT}/api/wallets`);
+		// Start alerts polling (runs every 3 minutes)
+		try { alerts.startAlertsPolling(); } catch (e) { console.warn('Failed to start alerts polling:', e); }
+		// Initialize WebSocket server (used to notify frontend when alerts trigger)
+		try { wsServer.initWebSocketServer(server); } catch (e) { console.warn('Failed to start websocket server:', e); }
+		// Initialize token pool on startup
+		try { await initializeTokenPool(); } catch (e) { console.warn('Failed to initialize token pool:', e); }
 });

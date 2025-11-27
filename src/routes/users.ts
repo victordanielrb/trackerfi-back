@@ -3,8 +3,97 @@ import { createUser } from '../functions/userRelated/createUser';
 import { getUser } from '../functions/userRelated/getUser';
 import { updateUser } from '../functions/userRelated/updateUser';
 import { deleteUser } from '../functions/userRelated/deleteUser';
+import { authenticateToken } from '../functions/auth/jwtMiddleware';
+import { 
+  addTokenToFavorites, 
+  removeTokenFromFavorites, 
+  getUserFavorites, 
+  isTokenFavorite 
+} from '../functions/userRelated/manageFavorites';
 
 const router = Router();
+
+/**
+ * GET /users/favorites
+ * Get user's favorite tokens. Protected.
+ */
+router.get('/favorites', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    
+    const favorites = await getUserFavorites(userId);
+    res.json({ favorites });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
+
+/**
+ * POST /users/favorites/:tokenId
+ * Add token to user's favorites. Protected.
+ */
+router.post('/favorites/:tokenId', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { tokenId } = req.params;
+    
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    
+    const success = await addTokenToFavorites(userId, tokenId);
+    if (success) {
+      res.json({ success: true, message: 'Token added to favorites' });
+    } else {
+      res.status(400).json({ error: 'Failed to add token to favorites' });
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
+
+/**
+ * DELETE /users/favorites/:tokenId
+ * Remove token from user's favorites. Protected.
+ */
+router.delete('/favorites/:tokenId', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { tokenId } = req.params;
+    
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    
+    const success = await removeTokenFromFavorites(userId, tokenId);
+    if (success) {
+      res.json({ success: true, message: 'Token removed from favorites' });
+    } else {
+      res.status(400).json({ error: 'Failed to remove token from favorites' });
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
+
+/**
+ * GET /users/favorites/:tokenId/check
+ * Check if token is in user's favorites. Protected.
+ */
+router.get('/favorites/:tokenId/check', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { tokenId } = req.params;
+    
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    
+    const isFavorite = await isTokenFavorite(userId, tokenId);
+    res.json({ isFavorite });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
 
 // POST /users - Create a new user
 router.post('/', async (req: Request, res: Response) => {

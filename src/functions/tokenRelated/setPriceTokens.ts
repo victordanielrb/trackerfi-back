@@ -1,7 +1,7 @@
 import { env } from "process";
 
 import { get } from "http";
-import getTokensFromWallet from "./getTokensFromWallet";
+import getTokensFromWallet from "../wallets/getTokensFromWallet";
 import axios from "axios";
 import TokensFromWallet from "../../interfaces/tokenInterface";
 import { time, timeEnd } from "console";

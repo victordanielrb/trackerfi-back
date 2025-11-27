@@ -1,4 +1,5 @@
 interface TokensFromWallet {
+    id?: string;
     name: string;
     symbol: string;
     address: string;

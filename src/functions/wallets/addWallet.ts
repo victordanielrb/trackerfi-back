@@ -44,16 +44,6 @@ const verifyWalletOwnership = async (address: string, blockchain: Blockchain, us
     return true;
 };
 
-// Check if a wallet address is already tracked by any user
-const isWalletInUse = async (address: string, database: any): Promise<string | null> => {
-    // Search users collection for any user that has this address in their wallets array
-    const existing = await database.collection("users").findOne({
-        "wallets.address": address
-    });
-
-    return existing ? (existing._id ? existing._id.toString() : null) : null;
-};
-
 const addWallet = async (user_id: string, blockchain: string, wallet_address: string): Promise<{ status: number; message: any }> => {
     const client = mongo();
     try {
@@ -98,11 +88,7 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
             return { status: 400, message: { error: addressValidation.reason || "Invalid wallet address" } };
         }
 
-        // Check whether this wallet address is already tracked by another user
-        const owner = await isWalletInUse(wallet_address, database);
-        if (owner && owner !== user_id) {
-            return { status: 409, message: { error: "This wallet address is already tracked by another user" } };
-        }
+      
 
         // Verify wallet ownership (placeholder)
         const ownershipVerified = await verifyWalletOwnership(wallet_address, blockchain as Blockchain, user_id);

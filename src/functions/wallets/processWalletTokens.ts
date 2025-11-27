@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getCoinGeckoPlatformId, getSupportedChains } from './coingeckoMapping';
+import { getCoinGeckoPlatformId, getSupportedChains } from '../tokenRelated/coingeckoMapping';
 
 /**
  * Fetch the latest asset platforms from CoinGecko API

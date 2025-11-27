@@ -5,7 +5,7 @@ import getAllWallets from '../functions/wallets/getAllWallets';
 import getUserWallets from '../functions/wallets/getUserWallets';
 import getWalletById from '../functions/wallets/getWalletById';
 import updateWallet from '../functions/wallets/updateWallet';
-import getTokensFromWallet from '../functions/tokenRelated/getTokensFromWallet';
+import getTokensFromWallet from '../functions/wallets/getTokensFromWallet';
 import { authenticateToken } from '../functions/auth/jwtMiddleware';
 
 const router = Router();

@@ -5,7 +5,7 @@ import mongo from "../../mongo";
 export default function setTokenData(tokens: TokensFromWallet[]) {
     const client = mongo();
     client.connect().then(() => {
-        const db = client.db('trackfi');
+        const db = client.db('trackerfi');
         const collection = db.collection('tokens');
         tokens.forEach(async (token) => {
             const filter = { address: token.address, chain: token.chain };

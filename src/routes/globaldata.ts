@@ -4,7 +4,7 @@ import addTrackedWallet from '../functions/userRelated/addTrackedWallet';
 import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
-import GlobalData from '../functions/tokenRelated/globalData';
+import GlobalData from '../functions/globalData/globalData';
 import { withMongoDB } from '../mongo';
 
 const router = express.Router();

@@ -4,6 +4,7 @@ import addTrackedWallet from '../functions/userRelated/addTrackedWallet';
 import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
+import addAlert from '../functions/alerts/addAlert';
 
 const router = express.Router();
 
@@ -74,6 +75,34 @@ router.get('/tokens', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error getting tokens from tracked wallets:', error);
     res.status(500).json({ error: 'Failed to get tokens from tracked wallets' });
+  }
+});
+
+// Get user's alerts
+router.get('/alerts', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const user = await (await import('../functions/userRelated/getUser')).getUser(userId);
+    res.json({ alerts: user?.alerts || [] });
+  } catch (error) {
+    console.error('Error getting user alerts:', error);
+    res.status(500).json({ error: 'Failed to get alerts' });
+  }
+});
+
+// Create a new alert for the authenticated user
+router.post('/alerts', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { token, price_threshold, alert_type } = req.body;
+    if (!token || !price_threshold || !alert_type) {
+      return res.status(400).json({ error: 'token, price_threshold and alert_type are required' });
+    }
+    const result = await addAlert(userId, { token, price_threshold, alert_type });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error creating alert:', error);
+    res.status(500).json({ error: 'Failed to create alert' });
   }
 });
 
