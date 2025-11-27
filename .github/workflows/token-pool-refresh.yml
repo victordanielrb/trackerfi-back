@@ -1,0 +1,55 @@
+# GitHub Actions Workflow for Token Pool Refresh
+# This workflow refreshes the CoinGecko token list in MongoDB daily
+
+name: Token Pool Refresh
+
+on:
+  schedule:
+    # Run daily at 2:00 AM UTC
+    - cron: '0 2 * * *'
+    # Run every 5 minutes to refresh token pool and wallet transactions
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  NODE_ENV: production
+  MONGO_URI: ${{ secrets.MONGO_URI }}
+  ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+
+jobs:
+  refresh-tokens:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build TypeScript
+      run: npm run build
+      
+    - name: Refresh token pool
+      run: node dist/scripts/refreshTokenPool.js
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+      
+    - name: Log completion
+      run: echo "✅ Token pool refresh completed at $(date)"
+
+    - name: Refresh wallet transactions cache
+      run: node dist/scripts/refreshWalletTransactions.js
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+
+    - name: Log transactions completion
+      run: echo "✅ Wallet transactions refresh completed at $(date)"

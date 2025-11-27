@@ -1,0 +1,41 @@
+name: Wallet Snapshot Daily
+
+on:
+  schedule:
+    # Run daily at 03:00 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_ENV: production
+  MONGO_URI: ${{ secrets.MONGO_URI }}
+  ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build TypeScript
+      run: npm run build
+
+    - name: Wallet snapshot
+      run: node dist/scripts/walletSnapshot.js
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+
+    - name: Log completion
+      run: echo "✅ Wallet snapshot completed at $(date)"
