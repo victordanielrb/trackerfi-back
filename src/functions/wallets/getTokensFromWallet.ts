@@ -50,6 +50,12 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
   const response = await fetch(`https://api.zerion.io/v1/wallets/${wallet}/positions/?filter[positions]=only_simple&currency=usd&filter[trash]=only_non_trash&sort=value`, options);
   const data: any = await response.json();
 
+  // Check if API returned valid data
+  if (!data || !data.data || !Array.isArray(data.data)) {
+    console.error(`Zerion API error for wallet ${wallet}:`, data);
+    return [];
+  }
+
   const tokens: TokensFromWallet[] = [];
   const userTokens: Partial<TokensFromWallet>[] = [];
 
