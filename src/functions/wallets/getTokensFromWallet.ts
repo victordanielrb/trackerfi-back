@@ -1,4 +1,4 @@
-// Use the global `console` rather than importing it
+import { log } from "console";
 import mongo from "../../mongo";
 import { MongoClient } from "mongodb";
 import TokensFromWallet from "../../interfaces/tokenInterface";
@@ -48,13 +48,7 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
     console.warn('Error checking token cache for wallet', wallet, cacheErr);
   }
   const response = await fetch(`https://api.zerion.io/v1/wallets/${wallet}/positions/?filter[positions]=only_simple&currency=usd&filter[trash]=only_non_trash&sort=value`, options);
-  const data: any = await response.json();
-
-  // Check if API returned valid data
-  if (!data || !data.data || !Array.isArray(data.data)) {
-    console.error(`Zerion API error for wallet ${wallet}:`, data);
-    return [];
-  }
+  const data = await response.json();
 
   const tokens: TokensFromWallet[] = [];
   const userTokens: Partial<TokensFromWallet>[] = [];

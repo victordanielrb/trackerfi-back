@@ -1,5 +1,5 @@
 import axios from 'axios';
-import crypto from 'node:crypto';
+import crypto from 'crypto';
 import { decryptApiCredential, isEncrypted } from '../../utils/cryptoUtils';
 
 interface MEXCFuturesPosition {

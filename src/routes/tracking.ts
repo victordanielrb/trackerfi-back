@@ -4,7 +4,6 @@ import addTrackedWallet from '../functions/userRelated/addTrackedWallet';
 import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
-import getUserSnapshots from '../functions/userRelated/getUserSnapshots';
 import addAlert from '../functions/alerts/addAlert';
 import getWalletTransactions from '../functions/wallets/getWalletTransactions';
 
@@ -77,27 +76,6 @@ router.get('/tokens', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error getting tokens from tracked wallets:', error);
     res.status(500).json({ error: 'Failed to get tokens from tracked wallets' });
-  }
-});
-
-// Get portfolio snapshots for chart
-router.get('/snapshots', authenticateToken, async (req, res) => {
-  try {
-    const userId = (req as any).user.userId;
-    const { limit, days } = req.query;
-    
-    const snapshots = await getUserSnapshots(userId, {
-      limit: limit ? parseInt(limit as string) : 30,
-      days: days ? parseInt(days as string) : undefined
-    });
-    
-    res.json({
-      snapshots,
-      count: snapshots.length
-    });
-  } catch (error) {
-    console.error('Error getting portfolio snapshots:', error);
-    res.status(500).json({ error: 'Failed to get portfolio snapshots' });
   }
 });
 

@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import http from 'node:http';
+import http from 'http';
 
 // Simple in-memory map of userId -> set of WebSocket connections
 const clientsByUser: Map<string, Set<WebSocket>> = new Map();

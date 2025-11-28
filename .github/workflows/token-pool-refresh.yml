@@ -7,14 +7,11 @@ on:
   schedule:
     # Run daily at 2:00 AM UTC
     - cron: '0 2 * * *'
-    # Run every 5 minutes to refresh token pool and wallet transactions
-    - cron: '*/5 * * * *'
   workflow_dispatch: # Allow manual triggering
 
 env:
   NODE_ENV: production
   MONGO_URI: ${{ secrets.MONGO_URI }}
-  ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
 
 jobs:
   refresh-tokens:
@@ -30,28 +27,14 @@ jobs:
         node-version: '18'
         cache: 'npm'
         
-    - name: Install dependencies (including dev)
-      run: npm ci --include=dev
+    - name: Install dependencies
+      run: npm ci
       
     - name: Build TypeScript
       run: npm run build
-      env:
-        NODE_ENV: development
       
     - name: Refresh token pool
       run: node dist/scripts/refreshTokenPool.js
-      env:
-        MONGO_URI: ${{ secrets.MONGO_URI }}
-        ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
       
     - name: Log completion
       run: echo "✅ Token pool refresh completed at $(date)"
-
-    - name: Refresh wallet transactions cache
-      run: node dist/scripts/refreshWalletTransactions.js
-      env:
-        MONGO_URI: ${{ secrets.MONGO_URI }}
-        ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
-
-    - name: Log transactions completion
-      run: echo "✅ Wallet transactions refresh completed at $(date)"
