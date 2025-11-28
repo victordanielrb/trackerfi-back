@@ -28,13 +28,8 @@ jobs:
     - name: Install dependencies (including dev)
       run: npm ci --include=dev
 
-    - name: Build TypeScript
-      run: npm run build
-      env:
-        NODE_ENV: development
-
-    - name: Wallet snapshot
-      run: node dist/scripts/walletSnapshot.js
+    - name: Wallet snapshot (TS)
+      run: npm run snapshot:wallets
       env:
         MONGO_URI: ${{ secrets.MONGO_URI }}
         ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}

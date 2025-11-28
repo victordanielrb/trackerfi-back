@@ -7,12 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --watch src --exec ts-node src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "refresh:token-pool": "node dist/scripts/refreshTokenPool.js",
-    "refresh:wallet-transactions": "node dist/scripts/refreshWalletTransactions.js",
-    "snapshot:wallets": "node dist/scripts/walletSnapshot.js",
     "test:24h": "ts-node src/scripts/test24hChange.ts",
     "test:24h:user": "ts-node src/scripts/test24hChange.ts --user",
-    "test:24h:wallets": "ts-node src/scripts/test24hChange.ts --wallets"
+    "test:24h:wallets": "ts-node src/scripts/test24hChange.ts --wallets",
+    "snapshot:wallets": "ts-node src/scripts/walletSnapshot.ts"
   },
   "repository": {
     "type": "git",
@@ -41,14 +39,11 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
-    "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.3.0",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "@types/ws": "^8.5.13",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }
