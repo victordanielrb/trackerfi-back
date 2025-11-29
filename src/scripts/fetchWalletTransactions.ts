@@ -155,9 +155,11 @@ async function fetchAllWalletTransactions() {
                                     txChain = relationships.chain.data.id;
                                 }
 
+                                // The actual transaction type is in attributes.operation_type, not tx.type
+                                // tx.type is the Zerion resource type (always "transactions")
                                 const flattenedTx: Transaction = {
                                     id: tx.id,
-                                    type: tx.type,
+                                    type: attributes.operation_type || 'unknown',
                                     ...attributes,
                                     chain: txChain
                                 };

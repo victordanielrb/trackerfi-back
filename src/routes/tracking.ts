@@ -7,6 +7,9 @@ import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromT
 import getUserSnapshots from '../functions/userRelated/getUserSnapshots';
 import { getUserTransactions } from '../functions/userRelated/getUserTransactions';
 import addAlert from '../functions/alerts/addAlert';
+import getAlerts from '../functions/alerts/getAlerts';
+import updateAlert from '../functions/alerts/updateAlert';
+import deleteAlert, { deleteAlertByTokenId } from '../functions/alerts/deleteAlert';
 
 const router = express.Router();
 
@@ -84,8 +87,8 @@ router.get('/tokens', authenticateToken, async (req, res) => {
 router.get('/alerts', authenticateToken, async (req, res) => {
   try {
     const userId = (req as any).user.userId;
-    const user = await (await import('../functions/userRelated/getUser')).getUser(userId);
-    res.json({ alerts: user?.alerts || [] });
+    const alerts = await getAlerts(userId);
+    res.json({ alerts });
   } catch (error) {
     console.error('Error getting user alerts:', error);
     res.status(500).json({ error: 'Failed to get alerts' });
@@ -96,15 +99,117 @@ router.get('/alerts', authenticateToken, async (req, res) => {
 router.post('/alerts', authenticateToken, async (req, res) => {
   try {
     const userId = (req as any).user.userId;
-    const { token, price_threshold, alert_type } = req.body;
-    if (!token || !price_threshold || !alert_type) {
-      return res.status(400).json({ error: 'token, price_threshold and alert_type are required' });
+    const { token_id, token_symbol, token_name, price_threshold, alert_type } = req.body;
+    
+    if (!token_id || !token_symbol || !price_threshold || !alert_type) {
+      return res.status(400).json({ 
+        error: 'token_id, token_symbol, price_threshold and alert_type are required' 
+      });
     }
-    const result = await addAlert(userId, { token, price_threshold, alert_type });
+    
+    if (!['price_above', 'price_below'].includes(alert_type)) {
+      return res.status(400).json({ 
+        error: 'alert_type must be "price_above" or "price_below"' 
+      });
+    }
+    
+    const result = await addAlert(userId, { 
+      token_id, 
+      token_symbol, 
+      token_name: token_name || token_symbol,
+      price_threshold: Number(price_threshold), 
+      alert_type 
+    });
     res.json({ success: true, result });
   } catch (error) {
     console.error('Error creating alert:', error);
     res.status(500).json({ error: 'Failed to create alert' });
+  }
+});
+
+// Update an alert by index
+router.put('/alerts/:index', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const alertIndex = parseInt(req.params.index);
+    
+    if (isNaN(alertIndex) || alertIndex < 0) {
+      return res.status(400).json({ error: 'Invalid alert index' });
+    }
+    
+    const { token_id, token_symbol, token_name, price_threshold, alert_type, is_active } = req.body;
+    
+    const updateData: any = {};
+    if (token_id !== undefined) updateData.token_id = token_id;
+    if (token_symbol !== undefined) updateData.token_symbol = token_symbol;
+    if (token_name !== undefined) updateData.token_name = token_name;
+    if (price_threshold !== undefined) updateData.price_threshold = Number(price_threshold);
+    if (alert_type !== undefined) {
+      if (!['price_above', 'price_below'].includes(alert_type)) {
+        return res.status(400).json({ 
+          error: 'alert_type must be "price_above" or "price_below"' 
+        });
+      }
+      updateData.alert_type = alert_type;
+    }
+    if (is_active !== undefined) updateData.is_active = Boolean(is_active);
+    
+    const result = await updateAlert(userId, alertIndex, updateData);
+    
+    if (!result.success) {
+      return res.status(404).json({ error: 'Alert not found' });
+    }
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error updating alert:', error);
+    res.status(500).json({ error: 'Failed to update alert' });
+  }
+});
+
+// Delete an alert by index
+router.delete('/alerts/:index', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const alertIndex = parseInt(req.params.index);
+    
+    if (isNaN(alertIndex) || alertIndex < 0) {
+      return res.status(400).json({ error: 'Invalid alert index' });
+    }
+    
+    const result = await deleteAlert(userId, alertIndex);
+    
+    if (!result.success) {
+      return res.status(404).json({ error: 'Alert not found' });
+    }
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error deleting alert:', error);
+    res.status(500).json({ error: 'Failed to delete alert' });
+  }
+});
+
+// Delete an alert by token_id
+router.delete('/alerts/token/:tokenId', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const tokenId = req.params.tokenId;
+    
+    if (!tokenId) {
+      return res.status(400).json({ error: 'Token ID is required' });
+    }
+    
+    const result = await deleteAlertByTokenId(userId, tokenId);
+    
+    if (!result.success) {
+      return res.status(404).json({ error: 'Alert not found for this token' });
+    }
+    
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Error deleting alert by token:', error);
+    res.status(500).json({ error: 'Failed to delete alert' });
   }
 });
 

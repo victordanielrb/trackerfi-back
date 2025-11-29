@@ -1,0 +1,46 @@
+# GitHub Actions Workflow for Alerts Check
+# This workflow checks all user alerts against current token prices every 10 minutes
+
+name: Check Price Alerts
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  NODE_ENV: production
+  MONGO_URI: ${{ secrets.MONGO_URI }}
+  COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+
+jobs:
+  check-alerts:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies (including dev)
+      run: npm ci --include=dev
+
+    - name: Build TypeScript
+      run: npm run build
+      env:
+        NODE_ENV: development
+
+    - name: Run alerts check
+      run: node dist/scripts/checkAlerts.js
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+
+    - name: Log completion
+      run: echo "✅ Alerts check completed at $(date)"

@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import TokensFromWallet from "./tokenInterface";
 
 interface Wallet {
     chain: string;
@@ -15,13 +14,18 @@ interface Exchange {
     connected_at?: Date;
     updated_at?: Date;
 }
-interface Alert {
+
+export interface Alert {
+    token_id: string;        // CoinGecko ID
+    token_symbol: string;
+    token_name: string;
     price_threshold: number;
-    token : TokensFromWallet;
     alert_type: 'price_above' | 'price_below';
-    created_at?: Date;
-    updated_at?: Date;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
     last_triggered?: string;
+    triggered_count: number;
 }
 
 interface User {
