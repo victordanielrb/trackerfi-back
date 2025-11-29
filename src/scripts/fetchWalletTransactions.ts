@@ -48,10 +48,10 @@ interface TransactionWithMeta {
     fetched_at: Date;
 }
 
-const ZERION_API_KEY = process.env.ZERION_API_KEY;
+const ZERION_API_KEY_HASH = process.env.ZERION_API_KEY_HASH;
 
-if (!ZERION_API_KEY) {
-    console.error('❌ ZERION_API_KEY not found in environment variables');
+if (!ZERION_API_KEY_HASH) {
+    console.error('❌ ZERION_API_KEY_HASH not found in environment variables');
     process.exit(1);
 }
 
@@ -63,7 +63,7 @@ async function fetchWalletTransactionsFromAPI(
     chain?: string
 ): Promise<Transaction[]> {
     const headers = {
-        'Authorization': `Basic ${Buffer.from(ZERION_API_KEY + ':').toString('base64')}`,
+        'Authorization': `Basic ${ZERION_API_KEY_HASH}`,
         'Content-Type': 'application/json'
     };
 

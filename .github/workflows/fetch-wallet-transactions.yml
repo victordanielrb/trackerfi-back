@@ -12,7 +12,7 @@ on:
 env:
   NODE_ENV: production
   MONGO_URI: ${{ secrets.MONGO_URI }}
-  ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+  ZERION_API_KEY_HASH: ${{ secrets.ZERION_API_KEY_HASH }}
 
 jobs:
   fetch-transactions:
@@ -40,7 +40,7 @@ jobs:
       run: node dist/scripts/fetchWalletTransactions.js
       env:
         MONGO_URI: ${{ secrets.MONGO_URI }}
-        ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+        ZERION_API_KEY_HASH: ${{ secrets.ZERION_API_KEY_HASH }}
       
     - name: Log completion
       run: echo "✅ Wallet transactions fetch completed at $(date)"
