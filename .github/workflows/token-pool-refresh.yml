@@ -16,6 +16,9 @@ env:
 jobs:
   refresh-tokens:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./trackerfi-back
     
     steps:
     - name: Checkout code
@@ -26,15 +29,13 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: trackerfi-back/package-lock.json
         
     - name: Install dependencies
       run: npm ci
       
-    - name: Build TypeScript
-      run: npm run build
-      
     - name: Refresh token pool
-      run: node dist/scripts/refreshTokenPool.js
+      run: npm run refresh:tokens
       
     - name: Log completion
       run: echo "✅ Token pool refresh completed at $(date)"
