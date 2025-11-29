@@ -63,10 +63,10 @@ interface CachedTransactions {
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-const ZERION_API_KEY = process.env.ZERION_API_KEY;
+const ZERION_API_KEY_HASH = process.env.ZERION_API_KEY_HASH;
 
-if (!ZERION_API_KEY) {
-  console.warn('ZERION_API_KEY not found in environment variables');
+if (!ZERION_API_KEY_HASH) {
+  console.warn('ZERION_API_KEY_HASH not found in environment variables');
 }
 
 export default async function getWalletTransactions(
@@ -94,23 +94,17 @@ export default async function getWalletTransactions(
     console.log(`Fetching wallet transactions from Zerion for ${walletAddress} (${chain || 'all chains'})`);
     
     const headers: any = {
-      'Authorization': `Basic ${Buffer.from(ZERION_API_KEY + ':').toString('base64')}`,
-      'Content-Type': 'application/json'
+      'accept': 'application/json',
+      'authorization': `Basic ${ZERION_API_KEY_HASH}`
     };
 
-    let url = `https://api.zerion.io/v1/wallets/${walletAddress}/transactions/`;
-    const params: string[] = [];
+    let url = `https://api.zerion.io/v1/wallets/${walletAddress}/transactions/?page[size]=50`;
     
     if (chain) {
-      params.push(`filter[chain_ids]=${chain}`);
+      url += `&filter[chain_ids]=${chain}`;
     }
     if (cursor) {
-      params.push(`page[after]=${cursor}`);
-    }
-    params.push('page[size]=50'); // Limit to 50 transactions per request
-    
-    if (params.length > 0) {
-      url += '?' + params.join('&');
+      url += `&page[after]=${cursor}`;
     }
 
     const response = await axios.get<WalletTransactionsResponse>(url, { headers });
