@@ -5,9 +5,8 @@ import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
 import getUserSnapshots from '../functions/userRelated/getUserSnapshots';
-import { getUserTransactions, refreshUserTransactions } from '../functions/userRelated/getUserTransactions';
+import { getUserTransactions } from '../functions/userRelated/getUserTransactions';
 import addAlert from '../functions/alerts/addAlert';
-import getWalletTransactions from '../functions/wallets/getWalletTransactions';
 
 const router = express.Router();
 
@@ -81,55 +80,6 @@ router.get('/tokens', authenticateToken, async (req, res) => {
   }
 });
 
-// Get transactions from a specific wallet
-router.get('/wallets/:address/transactions', authenticateToken, async (req, res) => {
-  try {
-    const userId = (req as any).user.userId;
-    const { address } = req.params;
-    const { chain, cursor } = req.query;
-
-    if (!address) {
-      return res.status(400).json({ error: 'Wallet address is required' });
-    }
-
-    // Verify that the user has this wallet in their tracked wallets
-    const userWallets = await getUserTrackedWallets(userId);
-    const isWalletTracked = userWallets.wallets.some((wallet: any) => 
-      wallet.address.toLowerCase() === address.toLowerCase() &&
-      (!chain || wallet.chain === chain)
-    );
-
-    if (!isWalletTracked) {
-      return res.status(403).json({ error: 'Wallet not found in your tracking list' });
-    }
-
-    const result = await getWalletTransactions(
-      address, 
-      chain as string, 
-      cursor as string
-    );
-    
-    console.log(result);
-    
-    res.json({
-      wallet_address: address,
-      chain: chain || 'all',
-      transactions: result.transactions,
-      next_cursor: result.nextCursor,
-      total_count: result.transactions.length
-    });
-  } catch (error: any) {
-    console.error('Error getting wallet transactions:', error);
-    if (error.message.includes('not found')) {
-      res.status(404).json({ error: 'Wallet not found or no transactions available' });
-    } else if (error.message.includes('API key')) {
-      res.status(503).json({ error: 'Transaction service temporarily unavailable' });
-    } else {
-      res.status(500).json({ error: 'Failed to get wallet transactions' });
-    }
-  }
-});
-
 // Get user's alerts
 router.get('/alerts', authenticateToken, async (req, res) => {
   try {
@@ -176,15 +126,15 @@ router.get('/snapshots', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all user transactions (from all tracked wallets)
+// Get all user transactions (from all tracked wallets - stored in DB by hourly GitHub Action)
 router.get('/transactions', authenticateToken, async (req, res) => {
   try {
     const userId = (req as any).user.userId;
     const { wallet, chain, type, direction, from_date, to_date, limit } = req.query;
     
-    console.log('=== DEBUG /transactions ===');
+    console.log('=== GET /transactions ===');
     console.log('userId:', userId);
-    console.log('query params:', { wallet, chain, type, direction, from_date, to_date, limit });
+    console.log('filters:', { wallet, chain, type, direction, from_date, to_date, limit });
     
     const result = await getUserTransactions(userId, {
       wallet_address: wallet as string,
@@ -196,37 +146,16 @@ router.get('/transactions', authenticateToken, async (req, res) => {
       limit: limit ? parseInt(limit as string) : 100
     });
     
-    console.log('result transactions count:', result.transactions?.length);
-    console.log('result totalCount:', result.totalCount);
-    console.log('=== END DEBUG ===');
+    console.log(`Returning ${result.transactions?.length} transactions, last updated: ${result.lastUpdated}`);
     
     res.json({
       transactions: result.transactions,
       total_count: result.totalCount,
-      next_cursor: result.nextCursor
+      last_updated: result.lastUpdated
     });
   } catch (error) {
     console.error('Error getting user transactions:', error);
     res.status(500).json({ error: 'Failed to get transactions' });
-  }
-});
-
-// Refresh user transactions (force re-fetch from API)
-router.post('/transactions/refresh', authenticateToken, async (req, res) => {
-  try {
-    const userId = (req as any).user.userId;
-    const { wallet } = req.body;
-    
-    const result = await refreshUserTransactions(userId, wallet);
-    
-    res.json({
-      transactions: result.transactions,
-      total_count: result.totalCount,
-      message: 'Transactions refreshed successfully'
-    });
-  } catch (error) {
-    console.error('Error refreshing user transactions:', error);
-    res.status(500).json({ error: 'Failed to refresh transactions' });
   }
 });
 

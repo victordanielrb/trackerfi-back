@@ -166,7 +166,7 @@ async function getTransactionsFromCache(walletAddress: string, chain: string): P
   try {
     return await withMongoDB(async client => {
       const db = client.db('trackerfi');
-      const collection = db.collection('wallet_transactions_cache');
+      const collection = db.collection('transactions');
       
       const result = await collection.findOne({ 
         wallet_address: walletAddress,

@@ -5,8 +5,8 @@ name: Fetch Wallet Transactions
 
 on:
   schedule:
-    # Run daily at 04:00 AM UTC (after snapshots)
-    - cron: '0 4 * * *'
+    # Run every hour to keep transactions fresh
+    - cron: '0 * * * *'
   workflow_dispatch: # Allow manual triggering
 
 env:
