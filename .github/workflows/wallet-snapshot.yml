@@ -1,10 +1,13 @@
+# GitHub Actions Workflow for Wallet Snapshot
+# This workflow takes daily snapshots of all tracked wallets
+
 name: Wallet Snapshot Daily
 
 on:
   schedule:
     # Run daily at 03:00 AM UTC
     - cron: '0 3 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Allow manual triggering
 
 env:
   NODE_ENV: production
@@ -22,16 +25,16 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '20'
+        node-version: '18'
+        cache: 'npm'
 
-    - name: Sync lock file
-      run: npm install --package-lock-only
-
-    - name: Install dependencies
-      run: npm ci
+    - name: Install dependencies (including dev)
+      run: npm ci --include=dev
 
     - name: Build TypeScript
       run: npm run build
+      env:
+        NODE_ENV: development
 
     - name: Run wallet snapshot
       run: node dist/scripts/walletSnapshot.js
