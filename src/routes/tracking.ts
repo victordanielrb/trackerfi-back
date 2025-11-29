@@ -4,6 +4,7 @@ import addTrackedWallet from '../functions/userRelated/addTrackedWallet';
 import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
+import getUserSnapshots from '../functions/userRelated/getUserSnapshots';
 import addAlert from '../functions/alerts/addAlert';
 import getWalletTransactions from '../functions/wallets/getWalletTransactions';
 
@@ -151,6 +152,24 @@ router.post('/alerts', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error creating alert:', error);
     res.status(500).json({ error: 'Failed to create alert' });
+  }
+});
+
+// Get user's portfolio snapshots
+router.get('/snapshots', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { days, limit } = req.query;
+    
+    const snapshots = await getUserSnapshots(userId, {
+      days: days ? parseInt(days as string) : undefined,
+      limit: limit ? parseInt(limit as string) : 30
+    });
+    
+    res.json({ snapshots });
+  } catch (error) {
+    console.error('Error getting user snapshots:', error);
+    res.status(500).json({ error: 'Failed to get snapshots' });
   }
 });
 
