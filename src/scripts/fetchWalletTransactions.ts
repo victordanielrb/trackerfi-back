@@ -63,20 +63,14 @@ async function fetchWalletTransactionsFromAPI(
     chain?: string
 ): Promise<Transaction[]> {
     const headers = {
-        'Authorization': `Basic ${ZERION_API_KEY_HASH}`,
-        'Content-Type': 'application/json'
+        'accept': 'application/json',
+        'authorization': `Basic ${ZERION_API_KEY_HASH}`
     };
 
-    let url = `https://api.zerion.io/v1/wallets/${walletAddress}/transactions/`;
-    const params: string[] = [];
+    let url = `https://api.zerion.io/v1/wallets/${walletAddress}/transactions/?page[size]=100`;
     
     if (chain && chain !== 'all') {
-        params.push(`filter[chain_ids]=${chain}`);
-    }
-    params.push('page[size]=100'); // Get last 100 transactions
-    
-    if (params.length > 0) {
-        url += '?' + params.join('&');
+        url += `&filter[chain_ids]=${chain}`;
     }
 
     const response = await axios.get(url, { headers });
