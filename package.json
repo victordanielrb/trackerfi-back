@@ -10,7 +10,8 @@
     "test:24h": "ts-node src/scripts/test24hChange.ts",
     "test:24h:user": "ts-node src/scripts/test24hChange.ts --user",
     "test:24h:wallets": "ts-node src/scripts/test24hChange.ts --wallets",
-    "snapshot:wallets": "ts-node src/scripts/walletSnapshot.ts"
+    "snapshot:wallets": "ts-node src/scripts/walletSnapshot.ts",
+    "refresh:tokens": "ts-node src/scripts/refreshTokenPool.ts"
   },
   "repository": {
     "type": "git",
