@@ -7,12 +7,12 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --watch src --exec ts-node src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "test:24h": "npx ts-node src/scripts/test24hChange.ts",
-    "test:24h:user": "npx ts-node src/scripts/test24hChange.ts --user",
-    "test:24h:wallets": "npx ts-node src/scripts/test24hChange.ts --wallets",
-    "snapshot:wallets": "npx ts-node src/scripts/walletSnapshot.ts",
-    "refresh:tokens": "npx ts-node src/scripts/refreshTokenPool.ts",
-    "fetch:transactions": "npx ts-node src/scripts/fetchWalletTransactions.ts"
+    "test:24h": "node -r ts-node/register src/scripts/test24hChange.ts",
+    "test:24h:user": "node -r ts-node/register src/scripts/test24hChange.ts --user",
+    "test:24h:wallets": "node -r ts-node/register src/scripts/test24hChange.ts --wallets",
+    "snapshot:wallets": "node -r ts-node/register src/scripts/walletSnapshot.ts",
+    "refresh:tokens": "node -r ts-node/register src/scripts/refreshTokenPool.ts",
+    "fetch:transactions": "node -r ts-node/register src/scripts/fetchWalletTransactions.ts"
   },
   "repository": {
     "type": "git",
