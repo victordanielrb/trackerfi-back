@@ -31,9 +31,12 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
+
+    - name: Build TypeScript
+      run: npm run build
       
     - name: Refresh token pool
-      run: npm run refresh:tokens
+      run: node dist/scripts/refreshTokenPool.js
       
     - name: Log completion
       run: echo "✅ Token pool refresh completed at $(date)"

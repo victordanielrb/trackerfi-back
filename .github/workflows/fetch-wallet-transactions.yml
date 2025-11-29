@@ -32,9 +32,12 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
+
+    - name: Build TypeScript
+      run: npm run build
       
     - name: Fetch wallet transactions
-      run: npm run fetch:transactions
+      run: node dist/scripts/fetchWalletTransactions.js
       
     - name: Log completion
       run: echo "✅ Wallet transactions fetch completed at $(date)"
