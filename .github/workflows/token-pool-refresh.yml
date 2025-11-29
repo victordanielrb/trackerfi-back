@@ -16,9 +16,6 @@ env:
 jobs:
   refresh-tokens:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./trackerfi-back
     
     steps:
     - name: Checkout code

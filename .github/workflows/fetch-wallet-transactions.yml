@@ -17,9 +17,6 @@ env:
 jobs:
   fetch-transactions:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./trackerfi-back
     
     steps:
     - name: Checkout code
