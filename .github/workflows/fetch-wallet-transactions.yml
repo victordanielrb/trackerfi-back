@@ -1,0 +1,42 @@
+# GitHub Actions Workflow for Fetching Wallet Transactions
+# This workflow fetches and caches transactions for all tracked wallets daily
+
+name: Fetch Wallet Transactions
+
+on:
+  schedule:
+    # Run daily at 04:00 AM UTC (after snapshots)
+    - cron: '0 4 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  NODE_ENV: production
+  MONGO_URI: ${{ secrets.MONGO_URI }}
+  ZERION_API_KEY: ${{ secrets.ZERION_API_KEY }}
+
+jobs:
+  fetch-transactions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./trackerfi-back
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: trackerfi-back/package-lock.json
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Fetch wallet transactions
+      run: npm run fetch:transactions
+      
+    - name: Log completion
+      run: echo "✅ Wallet transactions fetch completed at $(date)"
