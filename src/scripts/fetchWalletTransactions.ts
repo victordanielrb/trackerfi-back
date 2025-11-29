@@ -61,7 +61,7 @@ if (!ZERION_API_KEY_HASH) {
 async function fetchWalletTransactionsFromAPI(
     walletAddress: string,
     chain?: string
-): Promise<Transaction[]> {
+): Promise<any[]> {
     const headers = {
         'accept': 'application/json',
         'authorization': `Basic ${ZERION_API_KEY_HASH}`
@@ -122,25 +122,53 @@ async function fetchAllWalletTransactions() {
                     // Fetch transactions for each wallet
                     for (const wallet of wallets) {
                         try {
-                            console.log(`  📥 Fetching: ${wallet.address} (${wallet.chain || 'all chains'})`);
+                            if (!wallet.address) {
+                                console.warn(`     ⚠️ Skipping wallet with no address`);
+                                continue;
+                            }
+
+                            // Normalize chain for API call
+                            // If chain is 'EVM', 'evm', or 'all', we don't filter by chain (fetch all)
+                            let apiChainFilter = wallet.chain;
+                            if (apiChainFilter && (apiChainFilter.toLowerCase() === 'evm' || apiChainFilter.toLowerCase() === 'all')) {
+                                apiChainFilter = undefined;
+                            }
+
+                            console.log(`  📥 Fetching: ${wallet.address} (${apiChainFilter || 'all chains'})`);
                             
                             const transactions = await fetchWalletTransactionsFromAPI(
                                 wallet.address,
-                                wallet.chain
+                                apiChainFilter
                             );
 
                             console.log(`     ✓ Got ${transactions.length} transactions`);
 
                             // Transform and add to collection
-                            const walletTransactions: TransactionWithMeta[] = transactions.map(tx => ({
-                                wallet_address: wallet.address,
-                                chain: wallet.chain || 'evm',
-                                transaction: {
-                                    ...tx,
-                                    chain: wallet.chain
-                                },
-                                fetched_at: new Date()
-                            }));
+                            const walletTransactions: TransactionWithMeta[] = transactions.map((tx: any) => {
+                                // Flatten Zerion V1 response
+                                const attributes = tx.attributes || {};
+                                const relationships = tx.relationships || {};
+                                
+                                // Extract chain from relationships if available, otherwise use wallet chain
+                                let txChain = wallet.chain;
+                                if (relationships.chain && relationships.chain.data && relationships.chain.data.id) {
+                                    txChain = relationships.chain.data.id;
+                                }
+
+                                const flattenedTx: Transaction = {
+                                    id: tx.id,
+                                    type: tx.type,
+                                    ...attributes,
+                                    chain: txChain
+                                };
+
+                                return {
+                                    wallet_address: wallet.address,
+                                    chain: wallet.chain || 'evm',
+                                    transaction: flattenedTx,
+                                    fetched_at: new Date()
+                                };
+                            });
 
                             allTransactions.push(...walletTransactions);
 
