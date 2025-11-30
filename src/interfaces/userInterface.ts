@@ -39,6 +39,7 @@ interface User {
     exchanges?: Exchange[];
     portfolio_24h_change?: number;
     portfolio_24h_change_percent?: number;
+    expoPushToken?: string; // Expo Push Notification token
 }
 
 export default User;

@@ -2,23 +2,20 @@ import { withMongoDB } from '../../mongo';
 import { ObjectId } from 'mongodb';
 import axios from 'axios';
 import { Alert } from '../../interfaces/userInterface';
-import { notifyUser } from './wsServer';
 
 // CoinGecko API configuration
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
 const coingeckoHeaders = COINGECKO_API_KEY ? { 'x-cg-demo-api-key': COINGECKO_API_KEY } : {};
 
-// WebSocket event types
-export interface AlertTriggeredEvent {
-  type: 'alert_triggered';
-  data: {
-    token_name: string;
-    token_symbol: string;
-    alert_type: 'price_above' | 'price_below';
-    threshold_price: number;
-    current_price: number;
-    triggered_at: string;
-  };
+// Expo Push Notification types
+interface ExpoPushMessage {
+  to: string;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  sound?: 'default' | null;
+  badge?: number;
+  channelId?: string;
 }
 
 interface TriggeredAlert {
@@ -164,11 +161,12 @@ export async function checkAllAlerts(): Promise<{
           alertsTriggered++;
           console.log(`  🚨 TRIGGERED: ${alert.token_symbol} ${alert.alert_type} ${threshold} (current: ${currentPrice})`);
           
-          // Update the alert
+          // Disable the alert and update trigger info
           await db.collection('users').updateOne(
             { _id: user._id },
             {
               $set: {
+                [`alerts.${i}.is_active`]: false, // Disable alert after triggering
                 [`alerts.${i}.last_triggered`]: nowIso,
                 [`alerts.${i}.updated_at`]: nowIso
               },
@@ -186,23 +184,43 @@ export async function checkAllAlerts(): Promise<{
             triggered_at: nowIso
           });
           
-          // Send WebSocket notification to user
-          const wsEvent: AlertTriggeredEvent = {
-            type: 'alert_triggered',
-            data: {
-              token_name: alert.token_name,
-              token_symbol: alert.token_symbol,
-              alert_type: alert.alert_type,
-              threshold_price: threshold,
-              current_price: currentPrice,
-              triggered_at: nowIso
+          // Send Expo Push Notification if user has a push token
+          if (user.expoPushToken) {
+            const direction = alert.alert_type === 'price_above' ? 'subiu acima de' : 'caiu abaixo de';
+            const pushMessage: ExpoPushMessage = {
+              to: user.expoPushToken,
+              title: `🚨 Alerta: ${alert.token_symbol}`,
+              body: `${alert.token_name} ${direction} $${threshold.toFixed(2)}! Preço atual: $${currentPrice.toFixed(2)}`,
+              data: {
+                type: 'alert_triggered',
+                token_id: alert.token_id,
+                token_symbol: alert.token_symbol,
+                current_price: currentPrice,
+                threshold_price: threshold
+              },
+              sound: 'default',
+              channelId: 'price-alerts'
+            };
+            
+            try {
+              const pushResponse = await axios.post(
+                'https://exp.host/--/api/v2/push/send',
+                pushMessage,
+                {
+                  headers: {
+                    'Accept': 'application/json',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'Content-Type': 'application/json',
+                  },
+                  timeout: 10000
+                }
+              );
+              console.log(`  📲 Push notification sent to user ${user._id}:`, pushResponse.data);
+            } catch (pushError: any) {
+              console.error(`  ❌ Failed to send push notification:`, pushError.message);
             }
-          };
-          
-          const userId = user._id.toString();
-          const notified = notifyUser(userId, wsEvent);
-          if (notified) {
-            console.log(`  📤 WebSocket notification sent to user ${userId}`);
+          } else {
+            console.log(`  ⚠️ User ${user._id} has no expoPushToken`);
           }
           
           triggeredAlerts.push({
