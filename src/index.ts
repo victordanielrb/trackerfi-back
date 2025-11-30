@@ -10,7 +10,6 @@ import getTokensFromWallet from './functions/wallets/getTokensFromWallet';
 import setTokenData from './functions/tokenRelated/setTokenData';
 import getTokenPrice from './functions/tokenRelated/setPriceTokens';
 import alerts from './functions/alerts/checkAlerts';
-import wsServer from './functions/alerts/wsServer';
 import http from 'http';
 
 import { createUser } from './functions/userRelated/createUser';
@@ -179,10 +178,8 @@ server.listen(PORT, async () => {
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`🔐 Auth: http://localhost:${PORT}/auth/login`);
   console.log(`💼 Wallets: http://localhost:${PORT}/api/wallets`);
-		// Start alerts polling (runs every 3 minutes)
+		// Start alerts polling (runs every 3 minutes) - sends Expo Push Notifications
 		try { alerts.startAlertsPolling(); } catch (e) { console.warn('Failed to start alerts polling:', e); }
-		// Initialize WebSocket server (used to notify frontend when alerts trigger)
-		try { wsServer.initWebSocketServer(server); } catch (e) { console.warn('Failed to start websocket server:', e); }
 		// Initialize token pool on startup
 		try { await initializeTokenPool(); } catch (e) { console.warn('Failed to initialize token pool:', e); }
 });

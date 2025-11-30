@@ -10,8 +10,70 @@ import {
   getUserFavorites, 
   isTokenFavorite 
 } from '../functions/userRelated/manageFavorites';
+import { withMongoDB } from '../mongo';
+import { ObjectId } from 'mongodb';
 
 const router = Router();
+
+/**
+ * POST /users/push-token
+ * Save user's Expo Push Token for notifications. Protected.
+ */
+router.post('/push-token', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { expoPushToken } = req.body;
+    
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    if (!expoPushToken) return res.status(400).json({ error: 'expoPushToken is required' });
+    
+    // Validate Expo Push Token format
+    if (!expoPushToken.startsWith('ExponentPushToken[') && !expoPushToken.startsWith('ExpoPushToken[')) {
+      return res.status(400).json({ error: 'Invalid Expo Push Token format' });
+    }
+    
+    await withMongoDB(async client => {
+      const db = client.db('trackerfi');
+      await db.collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $set: { expoPushToken, updated_at: new Date().toISOString() } }
+      );
+    });
+    
+    console.log(`📲 Push token saved for user ${userId}`);
+    res.json({ success: true, message: 'Push token saved' });
+  } catch (err) {
+    console.error('Save push token error:', err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
+
+/**
+ * DELETE /users/push-token
+ * Remove user's Expo Push Token. Protected.
+ */
+router.delete('/push-token', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    
+    await withMongoDB(async client => {
+      const db = client.db('trackerfi');
+      await db.collection('users').updateOne(
+        { _id: new ObjectId(userId) },
+        { $unset: { expoPushToken: '' } }
+      );
+    });
+    
+    console.log(`📲 Push token removed for user ${userId}`);
+    res.json({ success: true, message: 'Push token removed' });
+  } catch (err) {
+    console.error('Remove push token error:', err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
 
 /**
  * GET /users/favorites
