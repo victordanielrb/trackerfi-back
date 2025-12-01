@@ -84,31 +84,47 @@ export async function getAllTokens(search?: string, limit: number = 50) {
 		const list = await cursor.toArray();
 		
 		// Sort results by relevance if search is provided
+		// Priority: exact name > exact ticker > has name match > has ticker match
 		if (search && list.length > 0) {
 			const searchLower = search.toLowerCase();
 			list.sort((a, b) => {
-				// Exact symbol match gets highest priority
-				const aSymbolExact = a.symbol?.toLowerCase() === searchLower ? 1 : 0;
-				const bSymbolExact = b.symbol?.toLowerCase() === searchLower ? 1 : 0;
-				if (aSymbolExact !== bSymbolExact) return bSymbolExact - aSymbolExact;
-				
-				// Symbol starts with search gets second priority
-				const aSymbolStarts = a.symbol?.toLowerCase().startsWith(searchLower) ? 1 : 0;
-				const bSymbolStarts = b.symbol?.toLowerCase().startsWith(searchLower) ? 1 : 0;
-				if (aSymbolStarts !== bSymbolStarts) return bSymbolStarts - aSymbolStarts;
-				
-				// Exact name match gets third priority
+				// 1. Exact name match (highest priority) - "ethereum" -> Ethereum first
 				const aNameExact = a.name?.toLowerCase() === searchLower ? 1 : 0;
 				const bNameExact = b.name?.toLowerCase() === searchLower ? 1 : 0;
 				if (aNameExact !== bNameExact) return bNameExact - aNameExact;
 				
-				// Name starts with search gets fourth priority
+				// 2. Exact ID match (for coingecko IDs like "ethereum", "bitcoin")
+				const aIdExact = a.id?.toLowerCase() === searchLower ? 1 : 0;
+				const bIdExact = b.id?.toLowerCase() === searchLower ? 1 : 0;
+				if (aIdExact !== bIdExact) return bIdExact - aIdExact;
+				
+				// 3. Exact symbol/ticker match - "ETH" -> ETH first
+				const aSymbolExact = a.symbol?.toLowerCase() === searchLower ? 1 : 0;
+				const bSymbolExact = b.symbol?.toLowerCase() === searchLower ? 1 : 0;
+				if (aSymbolExact !== bSymbolExact) return bSymbolExact - aSymbolExact;
+				
+				// 4. Name starts with search
 				const aNameStarts = a.name?.toLowerCase().startsWith(searchLower) ? 1 : 0;
 				const bNameStarts = b.name?.toLowerCase().startsWith(searchLower) ? 1 : 0;
 				if (aNameStarts !== bNameStarts) return bNameStarts - aNameStarts;
 				
-				// Finally sort alphabetically by symbol
-				return (a.symbol || '').localeCompare(b.symbol || '');
+				// 5. Symbol starts with search
+				const aSymbolStarts = a.symbol?.toLowerCase().startsWith(searchLower) ? 1 : 0;
+				const bSymbolStarts = b.symbol?.toLowerCase().startsWith(searchLower) ? 1 : 0;
+				if (aSymbolStarts !== bSymbolStarts) return bSymbolStarts - aSymbolStarts;
+				
+				// 6. Name contains search
+				const aNameContains = a.name?.toLowerCase().includes(searchLower) ? 1 : 0;
+				const bNameContains = b.name?.toLowerCase().includes(searchLower) ? 1 : 0;
+				if (aNameContains !== bNameContains) return bNameContains - aNameContains;
+				
+				// 7. Symbol contains search
+				const aSymbolContains = a.symbol?.toLowerCase().includes(searchLower) ? 1 : 0;
+				const bSymbolContains = b.symbol?.toLowerCase().includes(searchLower) ? 1 : 0;
+				if (aSymbolContains !== bSymbolContains) return bSymbolContains - aSymbolContains;
+				
+				// Finally sort alphabetically by name
+				return (a.name || '').localeCompare(b.name || '');
 			});
 		}
 		
