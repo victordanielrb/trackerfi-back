@@ -1,31 +1,23 @@
-import { MongoClient, ObjectId } from "mongodb";
-import mongo from "../../mongo";
+import { ObjectId } from "mongodb";
+import { getDb } from "../../mongo";
 
 export default async function removeTrackedWallet(
-  userId: string, 
-  walletAddress: string, 
-  chain: string, 
-  client?: MongoClient
+  userId: string,
+  walletAddress: string,
+  chain: string
 ) {
-  let shouldCloseClient = false;
-  
-  if (!client) {
-    client = mongo();
-    shouldCloseClient = true;
-  }
-
   try {
-    const db = client.db("trackerfi");
-    
+    const db = await getDb();
+
     const result = await db.collection("users").updateOne(
       { _id: new ObjectId(userId) },
-      { 
-        $pull: { 
-          wallets: { 
-            address: walletAddress, 
-            chain: chain 
-          } 
-        } 
+      {
+        $pull: {
+          wallets: {
+            address: walletAddress,
+            chain: chain
+          }
+        }
       } as any
     );
 
@@ -41,9 +33,5 @@ export default async function removeTrackedWallet(
   } catch (error) {
     console.error("Error removing tracked wallet:", error);
     throw error;
-  } finally {
-    if (shouldCloseClient && client) {
-      await client.close();
-    }
   }
 }

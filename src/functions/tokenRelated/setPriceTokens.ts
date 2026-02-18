@@ -1,15 +1,10 @@
-import { env } from "process";
-
-import { get } from "http";
-import getTokensFromWallet from "../wallets/getTokensFromWallet";
 import axios from "axios";
 import TokensFromWallet from "../../interfaces/tokenInterface";
-import { time, timeEnd } from "console";
-import { stringify } from "querystring";
-import mongo from "../../mongo";
-import filterTokens from "./filterTokens";
-import { MongoClient } from "mongodb";
-import { getCoinGeckoPlatformId, isSupportedChain, getCoinGeckoTokenAddress } from "./coingeckoMapping";
+import { getDb } from "../../mongo";
+import { getCoinGeckoPlatformId, getCoinGeckoTokenAddress } from "./coingeckoMapping";
+
+const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || '';
+const coingeckoHeaders = COINGECKO_API_KEY ? { 'x-cg-demo-api-key': COINGECKO_API_KEY } : {};
 
 export interface FilteredTokens {
   [chain: string]: TokensFromWallet[];
@@ -21,20 +16,17 @@ async function fallbackPricesBySymbol(tokens: TokensFromWallet[]) {
     // Get unique symbols from tokens without prices
     const symbols = [...new Set(tokens.map(token => token.symbol.toLowerCase()))];
     const symbolsString = symbols.join(',');
-    
+
     const fallbackUrl = `https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd,brl&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&symbols=${symbolsString}`;
-    
+
     console.log(`🔍 Fallback URL:`, fallbackUrl);
-    
+
     const fallbackResponse = await axios.get(fallbackUrl, {
-      headers: { 
-        'accept': 'application/json', 
-        'x-cg-demo-api-key': 'CG-S9zAVgB8LWj91SZD1Umep4A9' 
-      }
+      headers: { 'accept': 'application/json', ...coingeckoHeaders }
     });
-    
+
     console.log(`📊 Fallback response:`, Object.keys(fallbackResponse.data));
-    
+
     // Apply fallback prices
     tokens.forEach(token => {
       const symbolData = fallbackResponse.data[token.symbol.toLowerCase()];
@@ -49,25 +41,20 @@ async function fallbackPricesBySymbol(tokens: TokensFromWallet[]) {
         console.warn(`❌ No fallback price found for ${token.symbol}`);
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Fallback price fetch failed:', error);
   }
 }
 
-export default async function getTokenPrice(filterToken: FilteredTokens, client?: MongoClient) {
-  let shouldCloseClient = false;
-  
-  if (!client) {
-    client = mongo();
-    shouldCloseClient = true;
-  }
-  
+export default async function getTokenPrice(filterToken: FilteredTokens) {
+  const db = await getDb();
+
   try {
     for (const [chain, tokens] of Object.entries(filterToken)) {
       // Map to correct platform ID using the comprehensive mapping
       const platformId = getCoinGeckoPlatformId(chain);
-      
+
       if (!platformId) {
         console.warn(`❌ Unsupported chain: ${chain}. Use one of: ${Object.keys(require('./coingeckoMapping').COINGECKO_PLATFORM_MAP).join(', ')}`);
         continue;
@@ -84,21 +71,18 @@ export default async function getTokenPrice(filterToken: FilteredTokens, client?
       const tokenSeparatedByComma = mappedTokens.map(t => t.coingeckoAddress).join(',');
 
       const url = `https://api.coingecko.com/api/v3/simple/token_price/${platformId}?contract_addresses=${tokenSeparatedByComma}&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&vs_currencies=usd,brl`;
-      
+
       console.log(`🔍 Fetching prices for ${chain} (${platformId}):`, url);
 
       const response = await axios.get(url, {
-        headers: { 
-          'accept': 'application/json', 
-          'x-cg-demo-api-key': 'CG-S9zAVgB8LWj91SZD1Umep4A9' 
-        }
+        headers: { 'accept': 'application/json', ...coingeckoHeaders }
       });
 
       console.log(`📊 CoinGecko response for ${chain}:`, Object.keys(response.data));
 
       // Apply prices using the mapped addresses
       const tokensWithoutPrices: TokensFromWallet[] = [];
-      
+
       filterToken[chain].forEach((token, index) => {
         const mappedAddress = mappedTokens[index].coingeckoAddress;
         const priceData = response.data[mappedAddress.toLowerCase()];
@@ -123,7 +107,7 @@ export default async function getTokenPrice(filterToken: FilteredTokens, client?
     }
 
     const finalFilteredArray = Object.values(filterToken).flat();
-    
+
     // Update tokens in database
     if (finalFilteredArray.length > 0) {
       const bulkOps = finalFilteredArray.map(token => ({
@@ -134,17 +118,13 @@ export default async function getTokenPrice(filterToken: FilteredTokens, client?
         }
       }));
 
-      await client!.db("trackerfi").collection("tokens").bulkWrite(bulkOps);
+      await db.collection("tokens").bulkWrite(bulkOps);
     }
 
     return finalFilteredArray;
-    
+
   } catch (error) {
     console.error('❌ Error fetching token prices:', error);
     throw error;
-  } finally {
-    if (shouldCloseClient && client) {
-      await client.close();
-    }
   }
 }

@@ -83,22 +83,13 @@ router.post('/logout', authenticateToken, (req: Request, res: Response) => {
   });
 });
 
-// ==================== 2FA Routes ====================
+// ==================== 2FA Routes (TOTP-based) ====================
 
-// POST /auth/2fa/add - Add 2FA hash for authenticated user
-router.post('/2fa/add', authenticateToken, async (req: Request, res: Response) => {
+// POST /auth/2fa/setup - Generate TOTP secret + QR code
+router.post('/2fa/setup', authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { two_factor_hash } = req.body;
-
-    if (!two_factor_hash) {
-      return res.status(400).json({
-        success: false,
-        message: '2FA hash is required'
-      });
-    }
-
-    const result = await add2FA(userId, two_factor_hash);
+    const result = await add2FA(userId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -106,11 +97,34 @@ router.post('/2fa/add', authenticateToken, async (req: Request, res: Response) =
       res.status(400).json(result);
     }
   } catch (error) {
-    console.error('Add 2FA error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    console.error('Setup 2FA error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// POST /auth/2fa/verify - Verify TOTP code (enables 2FA on first successful verify)
+router.post('/2fa/verify', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'TOTP token is required (6-digit code from authenticator app)'
+      });
+    }
+
+    const result = await verify2FA(userId, token);
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(401).json(result);
+    }
+  } catch (error) {
+    console.error('Verify 2FA error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -118,7 +132,6 @@ router.post('/2fa/add', authenticateToken, async (req: Request, res: Response) =
 router.delete('/2fa/remove', authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-
     const result = await remove2FA(userId);
 
     if (result.success) {
@@ -128,18 +141,14 @@ router.delete('/2fa/remove', authenticateToken, async (req: Request, res: Respon
     }
   } catch (error) {
     console.error('Remove 2FA error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
-// GET /auth/2fa - Get 2FA status for authenticated user
+// GET /auth/2fa - Get 2FA status (enabled/disabled, no secret exposed)
 router.get('/2fa', authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-
     const result = await get2FA(userId);
 
     if (result.success) {
@@ -149,39 +158,7 @@ router.get('/2fa', authenticateToken, async (req: Request, res: Response) => {
     }
   } catch (error) {
     console.error('Get 2FA error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// POST /auth/2fa/verify - Verify 2FA code for authenticated user
-router.post('/2fa/verify', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user.userId;
-    const { two_factor_hash } = req.body;
-
-    if (!two_factor_hash) {
-      return res.status(400).json({
-        success: false,
-        message: '2FA hash is required for verification'
-      });
-    }
-
-    const result = await verify2FA(userId, two_factor_hash);
-
-    if (result.success) {
-      res.status(200).json(result);
-    } else {
-      res.status(401).json(result);
-    }
-  } catch (error) {
-    console.error('Verify 2FA error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

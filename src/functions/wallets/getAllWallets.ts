@@ -1,9 +1,8 @@
-import { withMongoDB } from '../../mongo';
+import { getDb } from '../../mongo';
 
 const getAllWallets = async (): Promise<{ status: number; message: any }> => {
     try {
-        const result = await withMongoDB(async (client) => {
-            const database = client.db("trackerfi");
+        const database = await getDb();
 
             // Aggregate wallets stored inside users.wallets array
             const usersWithWallets = await database.collection("users")
@@ -28,8 +27,7 @@ const getAllWallets = async (): Promise<{ status: number; message: any }> => {
 
             // Optionally sort by connected_at descending
             flattened.sort((a, b) => (b.connected_at || '').localeCompare(a.connected_at || ''));
-            return flattened;
-        });
+        const result = flattened;
 
         return { 
             status: 200, 

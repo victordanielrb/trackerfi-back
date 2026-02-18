@@ -1,6 +1,6 @@
 import axios from 'axios';
 import TokensFromWallet from '../../interfaces/tokenInterface';
-import { withMongoDB } from '../../mongo';
+import { getDb } from '../../mongo';
 
 // CoinGecko API configuration
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
@@ -69,10 +69,9 @@ export async function getTokenDetails(id: string): Promise<TokensFromWallet | nu
  */
 async function getTokenFromDB(id: string): Promise<TokensFromWallet | null> {
   try {
-    return await withMongoDB(async client => {
-      const db = client.db('trackerfi');
+    const db = await getDb();
       const collection = db.collection('alltokens');
-      
+
       const token = await collection.findOne({ id });
       if (!token) return null;
 
@@ -95,7 +94,6 @@ async function getTokenFromDB(id: string): Promise<TokensFromWallet | null> {
       };
 
       return mapped;
-    });
   } catch (error) {
     console.error('Error fetching token from DB:', error);
     return null;
@@ -107,10 +105,9 @@ async function getTokenFromDB(id: string): Promise<TokensFromWallet | null> {
  */
 async function saveTokenToDB(data: any): Promise<void> {
   try {
-    await withMongoDB(async client => {
-      const db = client.db('trackerfi');
+    const db = await getDb();
       const collection = db.collection('alltokens');
-      
+
       const md = data.market_data || {};
       const tokenDoc = {
         id: data.id,
@@ -129,7 +126,6 @@ async function saveTokenToDB(data: any): Promise<void> {
         { $set: tokenDoc },
         { upsert: true }
       );
-    });
   } catch (error) {
     console.error('Error saving token to DB:', error);
     // Don't throw - caching failure shouldn't break the request

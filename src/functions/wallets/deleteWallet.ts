@@ -1,11 +1,9 @@
-import mongo from '../../mongo';
+import { getDb } from '../../mongo';
 import { toObjectId } from '../../utils/mongodb';
 
 const deleteWallet = async (walletId: string): Promise<{ status: number; message: any }> => {
-    const client = mongo();
     try {
-        await client.connect();
-        const database = client.db("trackerfi");
+        const database = await getDb();
 
         // Expect walletId in the format: <userId>-<chain>-<idx> (as returned by API)
         const parts = walletId.split('-');
@@ -47,7 +45,7 @@ const deleteWallet = async (walletId: string): Promise<{ status: number; message
         });
 
         if (activeUsage) {
-            return { 
+            return {
                 status: 409,
                 message: "Cannot delete wallet that is being used in active campaigns"
             };
@@ -67,10 +65,7 @@ const deleteWallet = async (walletId: string): Promise<{ status: number; message
     } catch (error) {
         console.error("Error deleting wallet:", error);
         return { status: 500, message: "Error deleting wallet" };
-    } finally {
-        await client.close();
     }
 };
 
 export default deleteWallet;
-

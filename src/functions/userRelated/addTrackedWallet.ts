@@ -1,22 +1,14 @@
-import { MongoClient, ObjectId } from "mongodb";
-import mongo from "../../mongo";
+import { ObjectId } from "mongodb";
+import { getDb } from "../../mongo";
 
 export default async function addTrackedWallet(
-  userId: string, 
-  walletAddress: string, 
-  chain: string, 
-  client?: MongoClient
+  userId: string,
+  walletAddress: string,
+  chain: string
 ) {
-  let shouldCloseClient = false;
-  
-  if (!client) {
-    client = mongo();
-    shouldCloseClient = true;
-  }
-
   try {
-    const db = client.db("trackerfi");
-    
+    const db = await getDb();
+
     // Check if wallet is already tracked by this user in the users collection
     const existingUser = await db.collection("users").findOne({
       _id: new ObjectId(userId),
@@ -31,13 +23,13 @@ export default async function addTrackedWallet(
     // Add wallet to user's tracked wallets in the users collection
     const result = await db.collection("users").updateOne(
       { _id: new ObjectId(userId) },
-      { 
-        $addToSet: { 
-          wallets: { 
-            address: walletAddress, 
-            chain: chain 
-          } 
-        } 
+      {
+        $addToSet: {
+          wallets: {
+            address: walletAddress,
+            chain: chain
+          }
+        }
       }
     );
 
@@ -49,9 +41,5 @@ export default async function addTrackedWallet(
   } catch (error) {
     console.error("Error adding tracked wallet:", error);
     throw error;
-  } finally {
-    if (shouldCloseClient && client) {
-      await client.close();
-    }
   }
 }

@@ -1,4 +1,4 @@
-import mongo from "../../mongo";
+import { getDb } from "../../mongo";
 import bcrypt from 'bcrypt';
 import { generateToken } from './jwtUtil';
 interface LoginResult {
@@ -11,18 +11,15 @@ interface LoginResult {
 }
 
 export default async function login(email: string, password: string): Promise<LoginResult> {
-    const client = mongo();
-    
     try {
-        await client.connect();
-        const database = client.db("trackerfi");
+        const database = await getDb();
         const loginCollection = database.collection("login_users");
 
         // Find user by email
         const user = await loginCollection.findOne({ email }) as any;
 
         if (!user) {
-            return { 
+            return {
                 success: false,
                 message: "Invalid email or password"
             };
@@ -30,9 +27,9 @@ export default async function login(email: string, password: string): Promise<Lo
 
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-        
+
         if (!isPasswordValid) {
-            return { 
+            return {
                 success: false,
                 message: "Invalid email or password"
             };
@@ -64,11 +61,9 @@ export default async function login(email: string, password: string): Promise<Lo
 
     } catch (error) {
         console.error("Error logging in user:", error);
-        return { 
+        return {
             success: false,
             message: "Error logging in user"
         };
-    } finally {
-        await client.close();
     }
 }

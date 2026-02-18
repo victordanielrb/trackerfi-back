@@ -1,13 +1,13 @@
 /**
  * Test Push Notification Script
- * 
+ *
  * Usage: npx ts-node src/scripts/testPushNotification.ts [userId]
- * 
+ *
  * If no userId is provided, it will send to all users with expoPushToken
  */
 
 import 'dotenv/config';
-import { withMongoDB } from '../mongo';
+import { getDb } from '../mongo';
 import { ObjectId } from 'mongodb';
 import axios from 'axios';
 
@@ -46,7 +46,7 @@ async function sendTestNotification(expoPushToken: string, userId: string): Prom
         timeout: 10000
       }
     );
-    
+
     console.log(`✅ Notification sent to user ${userId}`);
     console.log('   Response:', JSON.stringify(response.data, null, 2));
     return true;
@@ -58,11 +58,11 @@ async function sendTestNotification(expoPushToken: string, userId: string): Prom
 
 async function main() {
   const targetUserId = process.argv[2]; // Optional: specific user ID
-  
+
   console.log('🔔 Test Push Notification Script');
   console.log('================================');
   console.log(`📅 Time: ${new Date().toISOString()}`);
-  
+
   if (targetUserId) {
     console.log(`🎯 Target user: ${targetUserId}`);
   } else {
@@ -72,42 +72,38 @@ async function main() {
 
   let sent = 0;
   let failed = 0;
-  let noToken = 0;
 
-  await withMongoDB(async (client) => {
-    const db = client.db('trackerfi');
-    
-    // Build query
-    const query: any = { expoPushToken: { $exists: true, $ne: null } };
-    if (targetUserId) {
-      try {
-        query._id = new ObjectId(targetUserId);
-      } catch (e) {
-        console.error('❌ Invalid user ID format');
-        return;
-      }
+  const db = await getDb();
+
+  // Build query
+  const query: any = { expoPushToken: { $exists: true, $ne: null } };
+  if (targetUserId) {
+    try {
+      query._id = new ObjectId(targetUserId);
+    } catch (e) {
+      console.error('❌ Invalid user ID format');
+      process.exit(1);
     }
-    
-    const users = await db.collection('users').find(query).toArray();
-    
-    console.log(`Found ${users.length} user(s) with push tokens\n`);
-    
-    if (users.length === 0) {
-      console.log('⚠️ No users found with expoPushToken');
-      console.log('');
-      console.log('To register a push token, the user needs to:');
-      console.log('1. Install the app on a physical device');
-      console.log('2. Grant notification permissions');
-      console.log('3. Login to the app');
-      return;
-    }
-    
+  }
+
+  const users = await db.collection('users').find(query).toArray();
+
+  console.log(`Found ${users.length} user(s) with push tokens\n`);
+
+  if (users.length === 0) {
+    console.log('⚠️ No users found with expoPushToken');
+    console.log('');
+    console.log('To register a push token, the user needs to:');
+    console.log('1. Install the app on a physical device');
+    console.log('2. Grant notification permissions');
+    console.log('3. Login to the app');
+  } else {
     for (const user of users) {
       console.log(`📤 Sending to: ${user.email || user.name || user._id}`);
       console.log(`   Token: ${user.expoPushToken.substring(0, 30)}...`);
-      
+
       const success = await sendTestNotification(user.expoPushToken, user._id.toString());
-      
+
       if (success) {
         sent++;
       } else {
@@ -115,7 +111,7 @@ async function main() {
       }
       console.log('');
     }
-  });
+  }
 
   console.log('================================');
   console.log('📊 Summary:');

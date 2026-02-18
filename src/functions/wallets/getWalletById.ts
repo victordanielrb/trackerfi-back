@@ -1,12 +1,10 @@
 import { Request } from 'express';
-import mongo from '../../mongo';
+import { getDb } from '../../mongo';
 import { toObjectId } from '../../utils/mongodb';
 
 const getWalletById = async (req: Request) => {
-    const client = mongo();
     try {
-        await client.connect();
-    const database = client.db("trackerfi");
+        const database = await getDb();
 
         // Expect walletId in the format: <userId>-<chain>-<idx>
         const walletId = req.params.id;
@@ -55,11 +53,7 @@ const getWalletById = async (req: Request) => {
     } catch (error) {
         console.error("Error retrieving wallet:", error);
         return { message: "Error retrieving wallet", status: 500 };
-    } finally {
-        await client.close();
     }
 };
 
 export default getWalletById;
-
-

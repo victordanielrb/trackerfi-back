@@ -5,7 +5,7 @@ import removeTrackedWallet from '../functions/userRelated/removeTrackedWallet';
 import getUserTrackedWallets from '../functions/userRelated/getUserTrackedWallets';
 import getTokensFromTrackedWallets from '../functions/userRelated/getTokensFromTrackedWallets';
 import GlobalData from '../functions/globalData/globalData';
-import { withMongoDB } from '../mongo';
+import { getDb } from '../mongo';
 
 const router = express.Router();
 
@@ -26,12 +26,9 @@ router.get("/totaldata", async (req, res) => {
         // Use a singleton document in collection 'globaldata' with _id = 'global'
         const TEN_MIN_MS = 10 * 60 * 1000;
 
-        const doc = await withMongoDB(async (client) => {
-            const db = client.db("trackerfi");
-            
-            return db.collection('globaldata').findOne({ key: 'global' });
-        });
-        
+        const db = await getDb();
+        const doc = await db.collection('globaldata').findOne({ key: 'global' });
+
         const now = Date.now();
         if (doc && doc.updated_at) {
             const updatedAt = new Date(doc.updated_at).getTime();
@@ -48,15 +45,13 @@ router.get("/totaldata", async (req, res) => {
         // upsert into collection - store the full GlobalData() result under 'data'
         try {
             console.log("insertng data");
-            
-            let datainsertresult = await withMongoDB(async (client) => {
-                const db = client.db("trackerfi");
-                await db.collection('globaldata').updateOne(
-                    { key: 'global' },
-                    { $set: { key: 'global', data: gd ?? {}, updated_at: new Date().toISOString() } },
-                    { upsert: true }
-                );
-            });
+
+            const db2 = await getDb();
+            let datainsertresult = await db2.collection('globaldata').updateOne(
+                { key: 'global' },
+                { $set: { key: 'global', data: gd ?? {}, updated_at: new Date().toISOString() } },
+                { upsert: true }
+            );
 
             console.log("inserted data", datainsertresult);
         } catch (dbErr) {
@@ -74,10 +69,8 @@ router.get('/prices', async (req, res) => {
     try {
         const TEN_MIN_MS = 10 * 60 * 1000;
 
-        const doc = await withMongoDB(async (client) => {
-            const db = client.db("trackerfi");
-            return db.collection('globaldata').findOne({ key: 'global' });
-        });
+        const db = await getDb();
+        const doc = await db.collection('globaldata').findOne({ key: 'global' });
 
         const now = Date.now();
         if (doc && doc.updated_at) {
@@ -93,17 +86,15 @@ router.get('/prices', async (req, res) => {
         const prices = gd?.prices ?? { brl: null, eur: null };
 
         try {
-            await withMongoDB(async (client) => {
-                const db = client.db("trackerfi");
-                // fetch existing doc to preserve other fields
-                const existing = await db.collection('globaldata').findOne({ key: 'global' });
-                const newData = { ...(existing?.data || {}), ...(gd || {}) };
-                await db.collection('globaldata').updateOne(
-                    { key: 'global' },
-                    { $set: { key: 'global', data: newData, updated_at: new Date().toISOString() } },
-                    { upsert: true }
-                );
-            });
+            const db2 = await getDb();
+            // fetch existing doc to preserve other fields
+            const existing = await db2.collection('globaldata').findOne({ key: 'global' });
+            const newData = { ...(existing?.data || {}), ...(gd || {}) };
+            await db2.collection('globaldata').updateOne(
+                { key: 'global' },
+                { $set: { key: 'global', data: newData, updated_at: new Date().toISOString() } },
+                { upsert: true }
+            );
         } catch (dbErr) {
             console.error('Failed to upsert globaldata cache (prices):', dbErr);
         }

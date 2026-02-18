@@ -1,12 +1,10 @@
 import { Request } from 'express';
-import mongo from '../../mongo';
+import { getDb } from '../../mongo';
 import { toObjectId } from '../../utils/mongodb';
 
 const getUserWallets = async (req: Request) => {
-    const client = mongo();
     try {
-        await client.connect();
-        const database = client.db("trackerfi");
+        const database = await getDb();
 
         const userId = req.params.userId;
         const objectId = toObjectId(userId);
@@ -30,7 +28,7 @@ const getUserWallets = async (req: Request) => {
             connected_at: wallet.connected_at
         }));
 
-        return { 
+        return {
             status: 200,
             message: {
                 message: "Wallets retrieved successfully",
@@ -40,8 +38,6 @@ const getUserWallets = async (req: Request) => {
     } catch (error) {
         console.error("Error retrieving user wallets:", error);
         return { status: 500, message: "Error retrieving user wallets" };
-    } finally {
-        await client.close();
     }
 };
 

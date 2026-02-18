@@ -1,6 +1,5 @@
 import { log } from "console";
-import mongo from "../../mongo";
-import { MongoClient } from "mongodb";
+import { getDb } from "../../mongo";
 import TokensFromWallet from "../../interfaces/tokenInterface";
 
 const options = {
@@ -11,22 +10,13 @@ const options = {
   }
 };
 
-export default async function getTokensFromWallet(wallet: string, client?: MongoClient) {
-  let shouldCloseClient = false;
-  
-  if (!client) {
-    client = mongo();
-    shouldCloseClient = true;
-  }
-  // Ensure client is connected when we created it here
-  if (shouldCloseClient) {
-    try { await client.connect(); } catch (e) { console.warn('Mongo connect failed:', e); }
-  }
+export default async function getTokensFromWallet(wallet: string) {
+  const db = await getDb();
 
   // Check for cached wallet tokens in users collection. If the wallet has tokens and
   // the wallet.updated_at is within the last 5 minutes, return that cached snapshot.
   try {
-    const usersColl = client.db('trackerfi').collection('users');
+    const usersColl = db.collection('users');
     const userWithWallet = await usersColl.findOne({ "wallets.address": wallet }, { projection: { wallets: { $elemMatch: { address: wallet } } } });
     const cachedWallet = userWithWallet?.wallets?.[0];
     if (cachedWallet && cachedWallet.tokens && cachedWallet.updated_at) {
@@ -57,19 +47,19 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
     let [idAddress, chain] = element.id.split('-');
     idAddress === "base"? idAddress = "0x0000000000000000000000000000000000000000": idAddress = idAddress;
     const contractAddress = idAddress;
-    
+
     // Better chain extraction and mapping - PRESERVE SPECIFIC CHAIN NAMES
     const chainName = chain || 'unknown';
-    
+
     const displayChain = chainName.toUpperCase();
-    
+
     // Extract price and balance information with better fallbacks
     const quantity = element.attributes.quantity?.float || parseFloat(element.attributes.quantity) || 0;
     const value = element.attributes.value || 0;
     const price = element.attributes.price || 0;
     const changes = element.attributes.changes || {};
     const change24h = changes['24h'] || changes.absolute_1d || 0;
-    
+
     const tokenInfo = {
       id: element.id,
       name: element.attributes.fungible_info?.name || 'Unknown',
@@ -92,7 +82,7 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
     console.log(`Token: ${tokenInfo.symbol}, Quantity: ${quantity}, Price: ${price}, Value: ${value}, Change24h: ${change24h}, Chain: ${displayChain}`);
 
   tokens.push(tokenInfo as TokensFromWallet);
-    
+
     // Store user-specific token data
     userTokens.push({
       id: element.id,
@@ -113,7 +103,7 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
     // We expect `users.wallets` to be an array of objects { address, chain, ... }.
     // Update the specific wallet entry when present, otherwise upsert a minimal user document
     // with a wallet object that includes the token snapshot.
-    const usersColl = client!.db("trackerfi").collection("users");
+    const usersColl = db.collection("users");
 
     // First try to update an existing wallet entry using the positional $ operator
     const updateRes = await usersColl.updateOne(
@@ -155,7 +145,7 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
         { upsert: true }
       );
     }
-    
+
     // Use bulkWrite for tokens instead of updateMany
     if (tokens.length > 0) {
       const bulkOps = tokens.map(token => ({
@@ -166,15 +156,10 @@ export default async function getTokensFromWallet(wallet: string, client?: Mongo
         }
       }));
 
-      await client!.db("trackerfi").collection("tokens").bulkWrite(bulkOps, { ordered: false });
+      await db.collection("tokens").bulkWrite(bulkOps, { ordered: false });
     }
   } catch (error) {
     console.error("Error updating database:", error);
-  }
-  finally {
-    if (shouldCloseClient && client) {
-      await client.close();
-    }
   }
   return tokens;
 }

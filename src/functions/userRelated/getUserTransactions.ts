@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { withMongoDB } from '../../mongo';
+import { getDb } from '../../mongo';
 import { Transaction, TransactionFilter } from '../../interfaces/transactionInterface';
 
 interface TransactionWithMeta {
@@ -31,17 +31,13 @@ export async function getUserTransactions(
         console.log('=== getUserTransactions (DB read) ===');
         console.log('userId:', userId);
         console.log('filter:', JSON.stringify(filter, null, 2));
-        
-        const result = await withMongoDB(async client => {
-            const db = client.db('trackerfi');
-            const collection = db.collection('user_transactions');
 
-            const doc = await collection.findOne({
-                user_id: new ObjectId(userId)
-            }) as unknown as UserTransactionsDocument | null;
+        const db = await getDb();
+        const collection = db.collection('user_transactions');
 
-            return doc;
-        });
+        const result = await collection.findOne({
+            user_id: new ObjectId(userId)
+        }) as unknown as UserTransactionsDocument | null;
 
         if (!result || !result.transactions) {
             console.log('No transactions found in DB for user');

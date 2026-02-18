@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import mongo from '../../mongo';
+import { getDb } from '../../mongo';
 import { ObjectId } from 'mongodb';
 import { Blockchain, UserWallet } from '../../interfaces/general';
 
@@ -7,7 +7,7 @@ import { Blockchain, UserWallet } from '../../interfaces/general';
 const validateWalletAddress = async (address: string, blockchain: Blockchain): Promise<{ valid: boolean; reason?: string }> => {
     // TODO: Implement actual wallet address validation for each blockchain
     console.log(`🔍 Validating ${blockchain} wallet: ${address}`);
-    
+
     switch (blockchain) {
         case Blockchain.EVM:
             // Ethereum-compatible address validation
@@ -30,7 +30,7 @@ const validateWalletAddress = async (address: string, blockchain: Blockchain): P
         default:
             return { valid: false, reason: "Unsupported blockchain" };
     }
-    
+
     return { valid: true };
 };
 
@@ -39,13 +39,12 @@ const verifyWalletOwnership = async (address: string, blockchain: Blockchain, us
     // TODO: Implement wallet ownership verification
     // This could involve a signature challenge or other verification method
     console.log(`✅ Verifying wallet ownership for user ${userId} on ${blockchain}`);
-    
+
     // Mock verification - in production, this would require a signature proof
     return true;
 };
 
 const addWallet = async (user_id: string, blockchain: string, wallet_address: string): Promise<{ status: number; message: any }> => {
-    const client = mongo();
     try {
         // Validar inputs
         if (!user_id || !blockchain || !wallet_address) {
@@ -55,10 +54,9 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
         if (!Object.values(Blockchain).includes(blockchain as Blockchain)) {
             return { status: 400, message: { error: "Invalid blockchain. Supported: SUI, EVM, SOLANA" } };
         }
-        
-        await client.connect();
-        const database = client.db("trackerfi");
-        
+
+        const database = await getDb();
+
         // Verificar se o usuário existe na coleção login_users
         const authUser = await database.collection("login_users").findOne({ _id: new ObjectId(user_id) });
         if (!authUser) {
@@ -77,7 +75,7 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
                 wallets: [],
                 exchanges: []
             };
-            
+
             await database.collection("users").insertOne(newUserData);
             user = newUserData;
         }
@@ -88,7 +86,7 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
             return { status: 400, message: { error: addressValidation.reason || "Invalid wallet address" } };
         }
 
-      
+
 
         // Verify wallet ownership (placeholder)
         const ownershipVerified = await verifyWalletOwnership(wallet_address, blockchain as Blockchain, user_id);
@@ -108,8 +106,8 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
             // Update the existing wallet entry for the chain
             const updateResult = await database.collection("users").updateOne(
                 { _id: new ObjectId(user_id), "wallets.chain": blockchain },
-                { 
-                    $set: { 
+                {
+                    $set: {
                         "wallets.$.address": wallet_address,
                         "wallets.$.connected_at": now,
                         "wallets.$.updated_at": now
@@ -158,8 +156,6 @@ const addWallet = async (user_id: string, blockchain: string, wallet_address: st
     } catch (error) {
         console.error("Error adding wallet:", error);
         return { status: 500, message: { error: "Error adding wallet" } };
-    } finally {
-        await client.close();
     }
 };
 

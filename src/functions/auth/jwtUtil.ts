@@ -1,23 +1,25 @@
 import jwt from 'jsonwebtoken';
-
 import type { Secret } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? '';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '1h'; // fallback to '1h' if not set
+// JWT_SECRET is validated on startup via envValidation.ts
+const JWT_SECRET: string = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production');
+  }
+  return 'dev-only-insecure-jwt-secret-do-not-use-in-production';
+})();
 
 export interface JWTPayload {
   userId: string;
   username: string;
-  email?: string; // For host users
-  twitter_username?: string; // For creator users
+  email?: string;
+  twitter_username?: string;
 }
 
-const secret = process.env.JWT_SECRET as Secret;
 export const generateToken = (payload: JWTPayload) => {
-
   return jwt.sign({
     data: payload
-  }, secret, { expiresIn: "7d", issuer: 'trackerfi-api', audience: 'trackerfi-users' });
+  }, JWT_SECRET as Secret, { expiresIn: "7d", issuer: 'trackerfi-api', audience: 'trackerfi-users' });
 };
 
 export const verifyToken = (token: string): JWTPayload | null => {
@@ -26,8 +28,7 @@ export const verifyToken = (token: string): JWTPayload | null => {
       issuer: 'trackerfi-api',
       audience: 'trackerfi-users',
     }) as any;
-    
-    // Extract the data property from the JWT payload
+
     return decoded.data as JWTPayload;
   } catch (error) {
     console.error('JWT verification failed:', error);
@@ -48,8 +49,7 @@ export const decodeToken = (token: string): JWTPayload | null => {
 export const refreshToken = (token: string): string | null => {
   const payload = verifyToken(token);
   if (!payload) return null;
-  
-  // Remove exp, iat, iss, aud from payload before regenerating
+
   const { userId, username, email, twitter_username } = payload;
   return generateToken({ userId, username, email, twitter_username });
 };

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { withMongoDB } from '../mongo';
+import { getDb } from '../mongo';
 import getTokensFromWallet from '../functions/wallets/getTokensFromWallet';
 import { ObjectId } from 'mongodb';
 
@@ -61,17 +61,15 @@ async function snapshotUser(user: any, db: any) {
   try {
     console.log('🚀 Starting wallet snapshot process...');
 
-    await withMongoDB(async client => {
-      const db = client.db('trackerfi');
-      const users = await db.collection('users').find({}, { projection: { wallets: 1, email: 1 } }).toArray();
-      console.log(`Found ${users.length} users to snapshot`);
+    const db = await getDb();
+    const users = await db.collection('users').find({}, { projection: { wallets: 1, email: 1 } }).toArray();
+    console.log(`Found ${users.length} users to snapshot`);
 
-      for (const user of users) {
-        await snapshotUser(user, db);
-        // Small sleep to avoid hammering external API
-        await new Promise(res => setTimeout(res, 500));
-      }
-    });
+    for (const user of users) {
+      await snapshotUser(user, db);
+      // Small sleep to avoid hammering external API
+      await new Promise(res => setTimeout(res, 500));
+    }
 
     console.log('✅ Wallet snapshot process completed');
     process.exit(0);

@@ -10,7 +10,7 @@ import {
   getUserFavorites, 
   isTokenFavorite 
 } from '../functions/userRelated/manageFavorites';
-import { withMongoDB } from '../mongo';
+import { getDb } from '../mongo';
 import { ObjectId } from 'mongodb';
 
 const router = Router();
@@ -32,13 +32,11 @@ router.post('/push-token', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid Expo Push Token format' });
     }
     
-    await withMongoDB(async client => {
-      const db = client.db('trackerfi');
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { expoPushToken, updated_at: new Date().toISOString() } }
-      );
-    });
+    const db = await getDb();
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { expoPushToken, updated_at: new Date().toISOString() } }
+    );
     
     console.log(`📲 Push token saved for user ${userId}`);
     res.json({ success: true, message: 'Push token saved' });
@@ -58,13 +56,11 @@ router.delete('/push-token', authenticateToken, async (req, res) => {
     const userId = (req as any).user?.userId;
     if (!userId) return res.status(401).json({ error: 'User not authenticated' });
     
-    await withMongoDB(async client => {
-      const db = client.db('trackerfi');
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(userId) },
-        { $unset: { expoPushToken: '' } }
-      );
-    });
+    const db = await getDb();
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $unset: { expoPushToken: '' } }
+    );
     
     console.log(`📲 Push token removed for user ${userId}`);
     res.json({ success: true, message: 'Push token removed' });
@@ -157,81 +153,49 @@ router.get('/favorites/:tokenId/check', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /users - Create a new user
-router.post('/', async (req: Request, res: Response) => {
+// GET /users/me - Get own profile (protected)
+router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const result = await createUser(req.body);
-    res.status(201).json({
-      status: 201,
-      message: result
-    });
-  } catch (error) {
-    console.error('Create user error:', error);
-    res.status(500).json({
-      status: 500,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// GET /users/:id - Get user by ID
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const result = await getUser(id);
+    const userId = (req as any).user?.userId;
+    const result = await getUser(userId);
     if (result) {
-      res.status(200).json({
-        status: 200,
-        message: result
-      });
+      res.status(200).json({ status: 200, data: result });
     } else {
-      res.status(404).json({
-        status: 404,
-        message: 'User not found'
-      });
+      res.status(404).json({ status: 404, message: 'User not found' });
     }
   } catch (error) {
-    console.error('Get user by ID error:', error);
-    res.status(500).json({
-      status: 500,
-      message: 'Internal server error'
-    });
+    console.error('Get user error:', error);
+    res.status(500).json({ status: 500, message: 'Internal server error' });
   }
 });
 
-// PUT /users/:id - Update user
-router.put('/:id', async (req: Request, res: Response) => {
+// PUT /users/me - Update own profile (protected)
+router.put('/me', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const result = await updateUser(id, req.body);
+    const userId = (req as any).user?.userId;
+    const result = await updateUser(userId, req.body);
     res.status(200).json({
       status: 200,
       message: result ? 'User updated successfully' : 'User not found'
     });
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(500).json({
-      status: 500,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ status: 500, message: 'Internal server error' });
   }
 });
 
-// DELETE /users/:id - Delete user
-router.delete('/:id', async (req: Request, res: Response) => {
+// DELETE /users/me - Delete own account (protected)
+router.delete('/me', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const result = await deleteUser(id);
+    const userId = (req as any).user?.userId;
+    const result = await deleteUser(userId);
     res.status(200).json({
       status: 200,
       message: result ? 'User deleted successfully' : 'User not found'
     });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({
-      status: 500,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ status: 500, message: 'Internal server error' });
   }
 });
 

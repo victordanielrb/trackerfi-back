@@ -1,7 +1,13 @@
 import crypto from 'crypto';
 
-// Use environment variable for encryption key, with fallback for development
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-character-secret-key-here!';
+// ENCRYPTION_KEY is required. Insecure fallback only for local dev.
+const ENCRYPTION_KEY: string = process.env.ENCRYPTION_KEY || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ENCRYPTION_KEY environment variable is required in production');
+  }
+  console.warn('WARNING: Using insecure default ENCRYPTION_KEY. Set ENCRYPTION_KEY env var before deploying.');
+  return 'dev-only-insecure-key-32-chars!!';
+})();
 const ALGORITHM = 'aes-256-cbc';
 
 // Ensure the key is exactly 32 bytes for AES-256

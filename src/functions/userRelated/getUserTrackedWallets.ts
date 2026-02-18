@@ -1,20 +1,12 @@
-import { MongoClient, ObjectId } from "mongodb";
-import mongo from "../../mongo";
+import { ObjectId } from "mongodb";
+import { getDb } from "../../mongo";
 
 export default async function getUserTrackedWallets(
-  userId: string, 
-  client?: MongoClient
+  userId: string
 ) {
-  let shouldCloseClient = false;
-  
-  if (!client) {
-    client = mongo();
-    shouldCloseClient = true;
-  }
-
   try {
-    const db = client.db("trackerfi");
-    
+    const db = await getDb();
+
     const user = await db.collection("users").findOne(
       { _id: new ObjectId(userId) },
       { projection: { wallets: 1 } }
@@ -28,9 +20,5 @@ export default async function getUserTrackedWallets(
   } catch (error) {
     console.error("Error getting user tracked wallets:", error);
     throw error;
-  } finally {
-    if (shouldCloseClient && client) {
-      await client.close();
-    }
   }
 }

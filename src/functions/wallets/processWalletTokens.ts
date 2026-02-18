@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { getCoinGeckoPlatformId, getSupportedChains } from '../tokenRelated/coingeckoMapping';
 
+const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || '';
+const coingeckoHeaders = COINGECKO_API_KEY ? { 'x-cg-demo-api-key': COINGECKO_API_KEY } : {};
+
 /**
  * Fetch the latest asset platforms from CoinGecko API
  * This function can be used to update your local mapping
@@ -8,10 +11,7 @@ import { getCoinGeckoPlatformId, getSupportedChains } from '../tokenRelated/coin
 export async function fetchCoinGeckoAssetPlatforms(): Promise<any[]> {
   try {
     const response = await axios.get('https://api.coingecko.com/api/v3/asset_platforms', {
-      headers: {
-        'accept': 'application/json',
-        'x-cg-demo-api-key': 'CG-S9zAVgB8LWj91SZD1Umep4A9'
-      }
+      headers: { 'accept': 'application/json', ...coingeckoHeaders }
     });
     
     return response.data;

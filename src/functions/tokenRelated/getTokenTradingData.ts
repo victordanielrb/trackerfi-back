@@ -1,6 +1,6 @@
 import axios from 'axios';
 import TokenTradingData from '../../interfaces/tokenTradingInterface';
-import { withMongoDB } from '../../mongo';
+import { getDb } from '../../mongo';
 
 // CoinGecko API configuration
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
@@ -186,8 +186,7 @@ async function fetchTradingDataFromAPI(id: string): Promise<TokenTradingData | n
  */
 async function getTradingDataFromCache(id: string, ignoreExpiry = false): Promise<TokenTradingData | null> {
 	try {
-		return await withMongoDB(async client => {
-			const db = client.db('trackerfi');
+		const db = await getDb();
 			const collection = db.collection('trading_cache');
 
 			const cached = await collection.findOne({ id });
@@ -221,28 +220,28 @@ async function getTradingDataFromCache(id: string, ignoreExpiry = false): Promis
 				atl_usd: cached.atl_usd,
 				atl_date: cached.atl_date,
 				last_updated: cached.last_updated,
-				
+
 				// All timeframe prices
 				prices_1d: cached.prices_1d,
 				prices_7d: cached.prices_7d,
 				prices_30d: cached.prices_30d,
 				prices_90d: cached.prices_90d,
 				prices_365d: cached.prices_365d,
-				
+
 				// All timeframe market caps
 				market_caps_1d: cached.market_caps_1d,
 				market_caps_7d: cached.market_caps_7d,
 				market_caps_30d: cached.market_caps_30d,
 				market_caps_90d: cached.market_caps_90d,
 				market_caps_365d: cached.market_caps_365d,
-				
+
 				// All timeframe volumes
 				volumes_1d: cached.volumes_1d,
 				volumes_7d: cached.volumes_7d,
 				volumes_30d: cached.volumes_30d,
 				volumes_90d: cached.volumes_90d,
 				volumes_365d: cached.volumes_365d,
-				
+
 				// All timeframe OHLC
 				ohlc_1d: cached.ohlc_1d,
 				ohlc_7d: cached.ohlc_7d,
@@ -251,14 +250,13 @@ async function getTradingDataFromCache(id: string, ignoreExpiry = false): Promis
 				ohlc_90d: cached.ohlc_90d,
 				ohlc_180d: cached.ohlc_180d,
 				ohlc_365d: cached.ohlc_365d,
-				
+
 				// Legacy fields
 				prices_24h: cached.prices_24h,
 				market_caps_24h: cached.market_caps_24h,
 				volumes_24h: cached.volumes_24h,
 				ohlc_24h: cached.ohlc_24h,
 			};
-		});
 	} catch (error) {
 		console.error('Error fetching trading data from cache:', error);
 		return null;
@@ -270,8 +268,7 @@ async function getTradingDataFromCache(id: string, ignoreExpiry = false): Promis
  */
 async function saveTradingDataToCache(data: TokenTradingData): Promise<void> {
 	try {
-		await withMongoDB(async client => {
-			const db = client.db('trackerfi');
+		const db = await getDb();
 			const collection = db.collection('trading_cache');
 
 			await collection.updateOne(
@@ -279,7 +276,6 @@ async function saveTradingDataToCache(data: TokenTradingData): Promise<void> {
 				{ $set: data },
 				{ upsert: true }
 			);
-		});
 	} catch (error) {
 		console.error('Error saving trading data to cache:', error);
 		// Don't throw - caching failure shouldn't break the request

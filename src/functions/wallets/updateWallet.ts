@@ -1,12 +1,10 @@
 import { Request } from 'express';
-import mongo from '../../mongo';
+import { getDb } from '../../mongo';
 import { toObjectId } from '../../utils/mongodb';
 
 const updateWallet = async (req: Request) => {
-    const client = mongo();
     try {
-        await client.connect();
-        const database = client.db("trackerfi");
+        const database = await getDb();
                 const walletId = req.params.id;
 
                 // Expect walletId in the format: <userId>-<chain>-<idx>
@@ -63,10 +61,7 @@ const updateWallet = async (req: Request) => {
     } catch (error) {
         console.error("Error updating wallet:", error);
         return { message: "Error updating wallet", status: 500 };
-    } finally {
-        await client.close();
     }
 };
 
 export default updateWallet;
-

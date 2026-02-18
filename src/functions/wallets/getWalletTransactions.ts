@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { withMongoDB } from '../../mongo';
+import { getDb } from '../../mongo';
 
 interface Transaction {
   id: string;
@@ -158,17 +158,15 @@ export default async function getWalletTransactions(
  */
 async function getTransactionsFromCache(walletAddress: string, chain: string): Promise<CachedTransactions | null> {
   try {
-    return await withMongoDB(async client => {
-      const db = client.db('trackerfi');
+    const db = await getDb();
       const collection = db.collection('wallet_transactions_cache');
-      
-      const result = await collection.findOne({ 
+
+      const result = await collection.findOne({
         wallet_address: walletAddress,
         chain: chain
       });
-      
+
       return result as unknown as CachedTransactions | null;
-    });
   } catch (error) {
     console.error('Error fetching transactions from cache:', error);
     return null;
@@ -185,12 +183,11 @@ async function saveTransactionsToCache(
   nextCursor?: string
 ): Promise<void> {
   try {
-    await withMongoDB(async client => {
-      const db = client.db('trackerfi');
+    const db = await getDb();
       const collection = db.collection('wallet_transactions_cache');
-      
+
       await collection.replaceOne(
-        { 
+        {
           wallet_address: walletAddress,
           chain: chain
         },
@@ -203,7 +200,6 @@ async function saveTransactionsToCache(
         },
         { upsert: true }
       );
-    });
   } catch (error) {
     console.error('Error saving transactions to cache:', error);
     // Don't throw - caching failure shouldn't break the request

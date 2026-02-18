@@ -1,4 +1,4 @@
-import { withMongoDB } from '../../mongo';
+import { getDb } from '../../mongo';
 import { ObjectId } from 'mongodb';
 
 export interface Alert {
@@ -19,15 +19,13 @@ export interface Alert {
  * Get all alerts for a user
  */
 export async function getAlerts(userId: string): Promise<Alert[]> {
-  return await withMongoDB(async client => {
-    const db = client.db('trackerfi');
-    const user = await db.collection('users').findOne(
-      { _id: new ObjectId(userId) },
-      { projection: { alerts: 1 } }
-    );
-    
-    return user?.alerts || [];
-  });
+  const db = await getDb();
+  const user = await db.collection('users').findOne(
+    { _id: new ObjectId(userId) },
+    { projection: { alerts: 1 } }
+  );
+
+  return user?.alerts || [];
 }
 
 /**

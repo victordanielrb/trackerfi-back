@@ -1,21 +1,13 @@
-import { MongoClient, ObjectId } from "mongodb";
-import mongo from "../../mongo";
+import { ObjectId } from "mongodb";
+import { getDb } from "../../mongo";
 import getTokensFromWallet from "../wallets/getTokensFromWallet";
 
 export default async function getTokensFromTrackedWallets(
-  userId: string, 
-  client?: MongoClient
+  userId: string
 ) {
-  let shouldCloseClient = false;
-  
-  if (!client) {
-    client = mongo();
-    shouldCloseClient = true;
-  }
-
   try {
-    const db = client.db("trackerfi");
-    
+    const db = await getDb();
+
     // Get user's tracked wallets from the `users` collection
     const user = await db.collection("users").findOne(
       { _id: new ObjectId(userId) },
@@ -31,15 +23,15 @@ export default async function getTokensFromTrackedWallets(
     // Get tokens for each tracked wallet
     for (const wallet of user.wallets) {
       try {
-        const tokens = await getTokensFromWallet(wallet.address, client);
-        
+        const tokens = await getTokensFromWallet(wallet.address);
+
         // Add wallet info to each token
         const tokensWithWallet = tokens.map((token: any) => ({
           ...token,
           wallet_address: wallet.address,
           wallet_chain: wallet.chain
         }));
-        
+
         allTokens.push(...tokensWithWallet);
       } catch (error) {
         console.error(`Error fetching tokens for wallet ${wallet.address}:`, error);
@@ -51,9 +43,5 @@ export default async function getTokensFromTrackedWallets(
   } catch (error) {
     console.error("Error getting tokens from tracked wallets:", error);
     throw error;
-  } finally {
-    if (shouldCloseClient && client) {
-      await client.close();
-    }
   }
 }
