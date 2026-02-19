@@ -6,12 +6,9 @@ import rateLimit from 'express-rate-limit';
 import http from 'http';
 import dns from 'dns';
 
-import { validateEnv } from './utils/envValidation';
 import { closeMongoDB } from './mongo';
-import { ensureIndexes } from './utils/dbIndexes';
 
-// Validate environment before anything else
-validateEnv();
+
 
 // Import routers
 import authRouter from './routes/auth';
@@ -108,9 +105,6 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   console.log(`TrackerFi Backend running on port ${PORT}`);
-
-  // Create database indexes
-  try { await ensureIndexes(); } catch (e) { console.warn('Failed to create indexes:', e); }
 
   // Start alerts polling (every 3 minutes) — single runner, no GH Action duplicate
   try { alerts.startAlertsPolling(); } catch (e) { console.warn('Failed to start alerts polling:', e); }
